@@ -841,6 +841,39 @@ body,
 .agente-principal.is-waiting {
   background: color-mix(in srgb, var(--color-magenta) 9%, var(--cartao));
 }
+/* O agente principal rodando: uma luz dá a volta no card, como o pulso que corre nas ligações dos
+   subagentes. É um anel fino fora do card (o ::after, posicionado pelo nó do React Flow), com um trecho
+   de luz que gira; a máscara deixa só o anel, sem cobrir o conteúdo. */
+@property --volta {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.agente-principal.is-running::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  padding: 3px;
+  border-radius: calc(var(--radius-md) + 5px);
+  background: conic-gradient(
+    from var(--volta),
+    transparent 0 58%,
+    color-mix(in srgb, var(--c-rodando) 30%, transparent) 76%,
+    var(--c-rodando) 95%,
+    transparent 100%
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: volta 2.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes volta {
+  to {
+    --volta: 360deg;
+  }
+}
 
 .agente-topo {
   display: flex;
@@ -967,14 +1000,15 @@ body,
 
 /* ---------- A cor dos grupos e dos cards ---------- */
 
-/* O quadradinho que mostra a cor e abre o seletor: cheio com a cor escolhida, ou tracejado (a de sempre). */
+/* O botão que mostra a cor e abre o seletor: o quadradinho cheio com a cor escolhida, ou o ícone da
+   paleta, na cor dos outros ícones, enquanto a cor é a de sempre. */
 .cor-botao {
   flex: none;
   width: 20px;
   height: 20px;
   padding: 0;
+  border: 0;
   border-radius: var(--radius-md);
-  border: 1.5px dashed var(--color-neutro-500);
   background: transparent;
   cursor: pointer;
 }
@@ -982,9 +1016,22 @@ body,
   border: 1px solid color-mix(in oklab, var(--cor) 65%, var(--color-texto));
   background: var(--cor);
 }
-.cor-botao:hover {
+.cor-botao.tem-cor:hover {
   outline: 2px solid color-mix(in srgb, var(--color-texto) 22%, transparent);
   outline-offset: 1px;
+}
+.cor-botao.is-padrao {
+  display: inline-grid;
+  place-items: center;
+  color: var(--color-neutro-700);
+}
+.cor-botao.is-padrao > svg {
+  width: 100%;
+  height: 100%;
+}
+.cor-botao.is-padrao:hover {
+  color: var(--color-texto);
+  background: color-mix(in srgb, var(--color-texto) 8%, transparent);
 }
 .cor-botao:focus-visible {
   outline: 2px solid var(--color-ciano);
@@ -1003,8 +1050,8 @@ body,
 }
 /* Na lista, antes do nome: à mostra se o card tem cor; senão, só com o mouse na linha. */
 .cor-botao-linha {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   align-self: center;
 }
 .cor-botao-linha.is-padrao {
@@ -1017,6 +1064,11 @@ body,
 .cor-botao-grande {
   width: 28px;
   height: 28px;
+}
+/* No painel, a paleta fica dentro de um quadro, como os outros botões dele. */
+.cor-botao-grande.is-padrao {
+  padding: 4px;
+  border: 1px solid var(--color-divisor);
 }
 
 /* O seletor ("quadro cromático"): solto na tela, no tamanho de sempre, mesmo com o mapa afastado. */
@@ -1652,6 +1704,11 @@ body,
   .react-flow__edge-path {
     animation: none !important;
     transition: none !important;
+  }
+  /* Sem a luz girando: o anel inteiro, parado. */
+  .agente-principal.is-running::after {
+    animation: none;
+    background: color-mix(in srgb, var(--c-rodando) 55%, transparent);
   }
 }
 

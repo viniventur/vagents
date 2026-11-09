@@ -1,5 +1,14 @@
 # Mudanças
 
+## 0.1.1 — 2026-11-09
+
+- **Os mais recentes em cima:** entre os subagentes de um mesmo pai, os que estão rodando vêm
+  primeiro, depois os que terminaram, do mais recente ao mais antigo (no mapa e na lista).
+- **O agente principal rodando:** uma luz dá a volta no card dele, como os pontos que correm nas
+  ligações dos subagentes.
+- **A paleta:** sem cor escolhida, o botão de cor do grupo e do card mostra o ícone da paleta (antes,
+  um quadrado tracejado que não dizia para que servia).
+
 ## 0.1.0 — 2026-11-09
 
 A primeira versão.

@@ -87,7 +87,7 @@ e quem precisa de você agora.
    dos subagentes dela, e a barra de cima conta quantas estão rodando, esperando você, paradas ou
    encerradas. Prefere uma lista? Clique em **Lista**, no alto.
 2. **Organize.** Arraste uma sessão pelo cabeçalho até o aviso "solte aqui para criar um grupo com ela"
-   e dê um nome ao grupo (o quadradinho ao lado do nome escolhe a cor dele). As próximas você arrasta
+   e dê um nome ao grupo (a paleta ao lado do nome escolhe a cor dele). As próximas você arrasta
    para dentro dele, e cada card fica onde você o soltar.
 3. **Clique numa sessão** para ver tudo dela no painel ao lado.
 4. **Feche a janela.** O vAgents fica na bandeja e avisa, com um popup no canto da tela, quando alguma
@@ -100,8 +100,10 @@ e quem precisa de você agora.
 Cada sessão é uma caixa com o **tema** (o título que o Claude dá a ela, ou o nome que você der), a
 **descrição** (o seu último pedido) e o **estado**. Dentro, a árvore: do agente principal saem os
 subagentes, e deles os que eles criaram, cada um com o tipo, o tempo e o passo atual
-(`Bash: pnpm test`, `Read: checkout.ts`). As ligações dos que estão rodando ganham pontos correndo; a
-sessão que espera por você pulsa em magenta.
+(`Bash: pnpm test`, `Read: checkout.ts`). Os que estão rodando ficam em cima; depois vêm os que
+terminaram, do mais recente ao mais antigo. As ligações dos que estão rodando ganham pontos correndo,
+o card do agente principal, enquanto ele roda, ganha uma luz que dá a volta nele, e a sessão que
+espera por você pulsa em magenta.
 
 ![Uma sessão esperando resposta, com três subagentes concluídos e dois rodando, as ligações animadas](docs/arvore.webp)
 
@@ -157,12 +159,13 @@ numa sessão vale mais que a regra.
 
 ### Cores
 
-Por padrão, tudo fica com as cores de sempre; a cor é só se você quiser. O quadradinho ao lado do nome
-do grupo abre o seletor de cor: escolha qualquer cor na área de cor e na faixa de matiz, numa das
-cores prontas, ou digite o hex. O quadro do grupo fica com um tom dela, e a borda também. Cada card
-pode ter a sua cor do mesmo jeito: o botão aparece no canto do card quando o mouse passa por ele (e
-também no painel da sessão, e antes do nome, na lista). A faixa no alto do card continua mostrando o
-estado da sessão. **Usar o padrão** volta à cor de sempre.
+Por padrão, tudo fica com as cores de sempre; a cor é só se você quiser. A paleta ao lado do nome do
+grupo abre o seletor de cor: escolha qualquer cor na área de cor e na faixa de matiz, numa das cores
+prontas, ou digite o hex. O quadro do grupo fica com um tom dela, e a borda também; a paleta vira um
+quadradinho com a cor escolhida. Cada card pode ter a sua cor do mesmo jeito: a paleta aparece no
+canto do card quando o mouse passa por ele (e também no painel da sessão, e antes do nome, na lista).
+A faixa no alto do card continua mostrando o estado da sessão. **Usar o padrão** volta à cor de
+sempre.
 
 ![O seletor de cor do grupo "Loja online": arrastar na área de cor pinta o grupo na hora; depois, o card "Checkout com Pix" fica azul pelo hex](docs/cores.webp)
 
@@ -346,7 +349,7 @@ Suba a versão em `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf
 [CHANGELOG](CHANGELOG.md), gere o instalador com `pnpm app:build` e anexe-o a uma Release do GitHub:
 
 ```sh
-gh release create v0.1.0 src-tauri/target/release/bundle/nsis/vAgents_0.1.0_x64-setup.exe --title "vAgents 0.1.0" --notes-file docs/release-0.1.0.md
+gh release create v0.1.1 src-tauri/target/release/bundle/nsis/vAgents_0.1.1_x64-setup.exe --title "vAgents 0.1.1" --notes-file docs/release-0.1.1.md
 ```
 
 O botão "Baixar para Windows" aponta para a Release mais recente.

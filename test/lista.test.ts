@@ -70,12 +70,13 @@ describe('a lista', () => {
       ...Array.from({ length: 6 }, (_, i) => agente(`d${i}`, 'done', i)),
     ]
     const s = montarLista(retrato([sessao('a', 'running', agentes)]), opcoes).secoes[0]!.sessoes[0]!
-    expect(ids(s.agentes)).toEqual(['r', 'd3', 'd4', 'd5', '+3'])
+    // O que roda em cima; depois os concluídos, do mais recente ao mais antigo.
+    expect(ids(s.agentes)).toEqual(['r', 'd5', 'd4', 'd3', '+3'])
     const r = s.agentes[0]
     expect(r?.tipo === 'agente' && ids(r.filhos)).toEqual(['neto'])
 
     const aberta = montarLista(retrato([sessao('a', 'running', agentes)]), { ...opcoes, abertos: new Set(['a|main']) })
-    expect(ids(aberta.secoes[0]!.sessoes[0]!.agentes)).toEqual(['r', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', '+3'])
+    expect(ids(aberta.secoes[0]!.sessoes[0]!.agentes)).toEqual(['r', 'd5', 'd4', 'd3', 'd2', 'd1', 'd0', '+3'])
   })
 
   it('"Recolher tudo" pega as sessões com agentes e os agentes com filhos', () => {
@@ -100,16 +101,16 @@ describe('as dobras da lista', () => {
   }
   const visiveis = (l: ReturnType<typeof lista>, d: Dobras) => l.secoes.flatMap((s) => linhasDaSecao(s, d).map((x) => x.id))
 
-  it('tudo aberto: a sessão, o pai, o neto (recuado) e o irmão', () => {
+  it('tudo aberto: a sessão, o irmão que começou por último, o pai e o neto (recuado)', () => {
     const l = lista()
     const linhas = linhasDaSecao(l.secoes[0]!, TUDO_ABERTO)
     expect(linhas.map((x) => [x.id, x.nivel])).toEqual([
       ['s:a', 0],
+      ['a:a:solto', 1],
       ['a:a:r', 1],
       ['a:a:neto', 2],
-      ['a:a:solto', 1],
     ])
-    expect(linhas[2]?.pai).toBe('a:a:r')
+    expect(linhas[3]?.pai).toBe('a:a:r')
     // O clique numa linha acha o que abrir no painel.
     expect(l.lookup.get('a:a:neto')?.agent?.id).toBe('neto')
     expect(l.lookup.get('m:a')?.session.key).toBe('a')
@@ -117,7 +118,7 @@ describe('as dobras da lista', () => {
 
   it('recolher um item esconde só o que está dentro dele', () => {
     const l = lista()
-    expect(visiveis(l, alternarDobra(TUDO_ABERTO, 'a:a:r'))).toEqual(['s:a', 'a:a:r', 'a:a:solto', 's:b'])
+    expect(visiveis(l, alternarDobra(TUDO_ABERTO, 'a:a:r'))).toEqual(['s:a', 'a:a:solto', 'a:a:r', 's:b'])
     expect(visiveis(l, alternarDobra(TUDO_ABERTO, 's:a'))).toEqual(['s:a', 's:b'])
   })
 

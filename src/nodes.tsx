@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps, type NodeTypes } from '@xyflow/react'
-import { CaretDown, CaretRight, CaretUp, Check, PencilSimple, Trash, X } from '@phosphor-icons/react'
+import { CaretDown, CaretRight, CaretUp, Check, Palette, PencilSimple, Trash, X } from '@phosphor-icons/react'
 import { createContext, memo, useContext, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { SessionView } from '../shared/model.ts'
 import { NowContext } from './hooks.ts'
@@ -36,9 +36,10 @@ export function cls(...parts: (string | false | undefined | null)[]): string {
 }
 
 /**
- * O quadradinho da cor de um grupo ou de um card: cheio com a cor escolhida, ou tracejado (a de sempre).
- * O clique abre o seletor e não chega ao que está embaixo (não arrasta o card nem abre o painel); o
- * mouse não tira o foco de onde ele está (o nome do grupo que você está digitando, por exemplo).
+ * O botão da cor de um grupo ou de um card: o quadradinho cheio com a cor escolhida, ou o ícone da paleta
+ * (a de sempre, sem cor escolhida). O clique abre o seletor e não chega ao que está embaixo (não arrasta
+ * o card nem abre o painel); o mouse não tira o foco de onde ele está (o nome do grupo que você está
+ * digitando, por exemplo).
  */
 export function BotaoDeCor({
   cor,
@@ -65,7 +66,9 @@ export function BotaoDeCor({
         e.stopPropagation()
         aoClicar(e.currentTarget, e.detail === 0)
       }}
-    />
+    >
+      {!cor && <Palette aria-hidden />}
+    </button>
   )
 }
 

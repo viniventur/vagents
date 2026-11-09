@@ -146,10 +146,25 @@ export const mainNodeId = (key: string) => `m:${key}`
 export const agentNodeId = (key: string, id: string) => `a:${key}:${id}`
 const moreNodeId = (groupKey: string) => `x:${groupKey}`
 
-/** O que fica à mostra entre os filhos de um mesmo pai, e o que vai para o "+N". */
+/**
+ * Os filhos de um mesmo pai, do mais recente ao mais antigo: os que estão rodando primeiro (o que
+ * começou por último em cima), depois os que terminaram, do que terminou por último ao mais antigo.
+ */
+export function porRecencia(list: AgentView[]): AgentView[] {
+  const rodando = (a: AgentView) => a.status === 'running'
+  return [...list].sort((a, b) => {
+    if (rodando(a) !== rodando(b)) return rodando(a) ? -1 : 1
+    const quando = (x: AgentView) => (rodando(x) ? (x.startedAt ?? x.updatedAt) : x.updatedAt)
+    return quando(b) - quando(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  })
+}
+
+/** O que fica à mostra entre os filhos de um mesmo pai (em ordem de recência), e o que vai para o "+N". */
 export function collapse(list: AgentView[], expanded: boolean): { shown: AgentView[]; hidden: AgentView[] } {
-  if (expanded) return { shown: list, hidden: [] }
-  const rest = list.filter((a) => a.status !== 'running').sort((a, b) => b.updatedAt - a.updatedAt)
+  const ordem = porRecencia(list)
+  if (expanded) return { shown: ordem, hidden: [] }
+  const rodando = ordem.filter((a) => a.status === 'running')
+  const rest = ordem.filter((a) => a.status !== 'running')
   let keep = rest.slice(0, SIZE.recentDone)
   let hidden = rest.slice(SIZE.recentDone)
   if (hidden.length === 1) {
@@ -157,8 +172,7 @@ export function collapse(list: AgentView[], expanded: boolean): { shown: AgentVi
     keep = rest
     hidden = []
   }
-  const shownIds = new Set(keep.map((a) => a.id))
-  return { shown: list.filter((a) => a.status === 'running' || shownIds.has(a.id)), hidden }
+  return { shown: [...rodando, ...keep], hidden }
 }
 
 export function countAgents(agents: AgentView[]): Counts {

@@ -1,7 +1,7 @@
 {
   "name": "vagents",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "vAgents: as sessões do Claude Code desta máquina, cada uma com a árvore dos seus subagentes e o estado ao vivo. Windows, Tauri 2.",
   "scripts": {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentView, SessionView, Snapshot } from '../shared/model.ts'
-import { SEM_GRUPO, SIZE, areaNoPonto, buildGraph, collapse, perColumn, roundedPath } from '../src/layout.ts'
+import { SEM_GRUPO, SIZE, areaNoPonto, buildGraph, collapse, perColumn, porRecencia, roundedPath } from '../src/layout.ts'
 import { VAZIA, alternarRecolhido, criarGrupo, moverSessao } from '../src/lib/organizacao.ts'
 
 const agent = (id: string, status: AgentView['status'], updatedAt: number, parentId: string | null = null): AgentView => ({
@@ -31,11 +31,24 @@ const snap = (sessions: SessionView[]): Snapshot => ({ generatedAt: 1_000_000, c
 const opts = { expanded: new Set<string>(), endedWindowMs: 3_600_000, selectedId: null }
 
 describe('collapse', () => {
-  it('mostra os que rodam e os 3 concluídos mais recentes; o resto vai para o "+N"', () => {
+  it('mostra os que rodam e os 3 concluídos mais recentes (os mais recentes em cima); o resto vai para o "+N"', () => {
     const list = [agent('r1', 'running', 50), ...Array.from({ length: 6 }, (_, i) => agent(`d${i}`, 'done', i))]
     const { shown, hidden } = collapse(list, false)
-    expect(shown.map((a) => a.id)).toEqual(['r1', 'd3', 'd4', 'd5'])
+    expect(shown.map((a) => a.id)).toEqual(['r1', 'd5', 'd4', 'd3'])
     expect(hidden.map((a) => a.id).sort()).toEqual(['d0', 'd1', 'd2'])
+    // Aberto, mostra todos, na mesma ordem.
+    expect(collapse(list, true).shown.map((a) => a.id)).toEqual(['r1', 'd5', 'd4', 'd3', 'd2', 'd1', 'd0'])
+  })
+
+  it('os que rodam vêm primeiro (o que começou por último em cima), depois os que terminaram por último', () => {
+    const lista = [
+      { ...agent('velho', 'running', 90), startedAt: 10 },
+      { ...agent('acabou-agora', 'done', 100), startedAt: 5 },
+      { ...agent('novo', 'running', 80), startedAt: 60 },
+      { ...agent('interrompido', 'interrupted', 95), startedAt: 20 },
+      { ...agent('antigo', 'done', 30), startedAt: 1 },
+    ]
+    expect(porRecencia(lista).map((a) => a.id)).toEqual(['novo', 'velho', 'acabou-agora', 'interrompido', 'antigo'])
   })
 
   it('não cria um "+1"', () => {
