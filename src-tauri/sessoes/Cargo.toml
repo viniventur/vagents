@@ -1,0 +1,23 @@
+[package]
+name = "vagents-sessoes"
+version = "0.1.0"
+description = "vAgents: lê o que o Claude Code grava em disco (sessões, históricos e subagentes) e monta o retrato para a tela"
+authors = ["Vinícius Ventura"]
+license = "MIT"
+edition = "2021"
+publish = false
+
+[lib]
+name = "vagents_sessoes"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Só para saber se o processo de uma sessão ainda vive (OpenProcess + GetExitCodeProcess).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
+
+[dev-dependencies]
+tempfile = "3"

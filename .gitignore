@@ -1,0 +1,15 @@
+node_modules
+dist
+*.local
+*.tsbuildinfo
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+
+# Rust/Tauri
+src-tauri/target
+src-tauri/sessoes/target
+src-tauri/gen/schemas

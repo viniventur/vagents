@@ -1,0 +1,3 @@
+# pnpm só executa scripts de instalação de pacotes explicitamente liberados.
+allowBuilds:
+  esbuild: true

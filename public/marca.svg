@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="1024" height="1024">
+  <rect width="120" height="120" rx="26" fill="#f8f4f4"/>
+  <g transform="translate(12 12) scale(0.8)" style="isolation:isolate">
+    <!-- Os braços do V: cada subagente (o nó e a ligação) é uma tinta só; as duas se misturam onde se cruzam. -->
+    <g style="mix-blend-mode:multiply">
+      <path d="M60 82 L24 28" stroke="#0088b0" stroke-width="14" stroke-linecap="round" fill="none"/>
+      <circle cx="24" cy="28" r="15" fill="#0088b0"/>
+    </g>
+    <g style="mix-blend-mode:multiply">
+      <path d="M60 82 L96 28" stroke="#0088b0" stroke-width="14" stroke-linecap="round" fill="none"/>
+      <circle cx="96" cy="28" r="15" fill="#0088b0"/>
+    </g>
+    <!-- O agente principal: o balão da marca, com o canto reto virado para baixo (a ponta do V). -->
+    <path d="M60 65 A17 17 0 0 1 77 82 A17 17 0 0 1 60 99 L43 99 L43 82 A17 17 0 0 1 60 65 Z" transform="rotate(-45 60 82)" fill="#201e1d" style="mix-blend-mode:multiply"/>
+  </g>
+</svg>

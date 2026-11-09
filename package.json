@@ -1,0 +1,39 @@
+{
+  "name": "vagents",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "vAgents: as sessões do Claude Code desta máquina, cada uma com a árvore dos seus subagentes e o estado ao vivo. Windows, Tauri 2.",
+  "scripts": {
+    "app": "tauri dev",
+    "app:build": "tauri build",
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run",
+    "test:rust": "cargo test --manifest-path src-tauri/sessoes/Cargo.toml -j 4 && cargo test --manifest-path src-tauri/Cargo.toml -j 4"
+  },
+  "license": "MIT",
+  "packageManager": "pnpm@11.17.0",
+  "dependencies": {
+    "@fontsource-variable/source-serif-4": "^5.3.1",
+    "@phosphor-icons/react": "2.1.10",
+    "@tauri-apps/api": "^2.12.4",
+    "@xyflow/react": "^12.12.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@tauri-apps/cli": "^2.12.4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}

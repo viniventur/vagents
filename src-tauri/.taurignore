@@ -1,0 +1,3 @@
+# O que o `tauri dev` não deve observar: a compilação própria da biblioteca de sessões (cargo test e
+# cargo doc nela gravam aqui e fariam o app recompilar a cada arquivo).
+sessoes/target

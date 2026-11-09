@@ -1,0 +1,1237 @@
+@import 'tailwindcss';
+
+/* ============================================================================
+   Tokens: os do design system da marca, os mesmos do vlauncher. Papel e tinta fazem quase tudo;
+   o ciano é o destaque (o que está ativo, o botão principal) e o magenta, o segundo destaque (aqui, o
+   que espera por você). O amarelo de impressão nunca aparece na interface.
+   ========================================================================== */
+@theme {
+  --color-*: initial;
+
+  --color-fundo: #f3f2f2;
+  --color-superficie: #eae9e9;
+  --color-texto: #201e1d;
+  --color-divisor: color-mix(in srgb, #201e1d 16%, transparent);
+  --color-branco: #ffffff;
+
+  --color-neutro-100: #f8f4f4;
+  --color-neutro-200: #eae7e7;
+  --color-neutro-300: #d7d3d3;
+  --color-neutro-400: #bab6b6;
+  --color-neutro-500: #9b9797;
+  --color-neutro-600: #7d7979;
+  --color-neutro-700: #605d5d;
+  --color-neutro-800: #444141;
+  --color-neutro-900: #2d2b2b;
+
+  --color-ciano: #0088b0;
+  --color-ciano-100: #e9f8ff;
+  --color-ciano-200: #cbeeff;
+  --color-ciano-300: #99e0ff;
+  --color-ciano-400: #62c5ee;
+  --color-ciano-500: #38a6cf;
+  --color-ciano-600: #1186ac;
+  --color-ciano-700: #006786;
+  --color-ciano-800: #004961;
+  --color-ciano-900: #0a303e;
+
+  --color-magenta: #d6006c;
+  --color-magenta-100: #fff1f4;
+  --color-magenta-200: #ffdee6;
+  --color-magenta-300: #ffc0d0;
+  --color-magenta-400: #ff90b1;
+  --color-magenta-500: #ff458e;
+  --color-magenta-600: #d82071;
+  --color-magenta-700: #aa0b56;
+  --color-magenta-800: #790e3d;
+  --color-magenta-900: #4b1528;
+
+  --font-serifa: 'Source Serif 4 Variable', 'Source Serif 4', ui-serif, Georgia, serif;
+  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
+
+  /* Espaços de 5 em 5 px: p-1 = 5, p-2 = 10, p-3 = 15, p-4 = 20. */
+  --spacing: 5px;
+
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+
+  --shadow-sm: var(--sombra-sm);
+  --shadow-md: var(--sombra-md);
+  --shadow-lg: var(--sombra-lg);
+}
+
+/* O claro: tinta sobre o papel. As superfícies do vAgents: o grupo um pouco mais escuro que o papel,
+   a sessão um pouco mais clara e o cartão do agente, branco. */
+:root {
+  --sombra-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+  --sombra-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+  --sombra-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+
+  --faixa: var(--color-superficie);
+  --sessao: var(--color-neutro-100);
+  --cartao: var(--color-branco);
+  --pontilhado: color-mix(in srgb, var(--color-texto) 14%, transparent);
+
+  color-scheme: light;
+}
+
+/* O escuro, a Tinta: os mesmos tokens com a paleta do vlauncher. */
+:root[data-tema='escuro'] {
+  --color-fundo: #1a1817;
+  --color-superficie: #201e1d;
+  --color-texto: #f3f2f2;
+  --color-divisor: color-mix(in srgb, #f3f2f2 14%, transparent);
+  --color-branco: #ffffff;
+
+  --color-neutro-100: #282624;
+  --color-neutro-200: #2b2929;
+  --color-neutro-300: #383533;
+  --color-neutro-400: #696665;
+  --color-neutro-500: #837f7d;
+  --color-neutro-600: #9c9795;
+  --color-neutro-700: #c0bdbb;
+  --color-neutro-800: #dad8d7;
+  --color-neutro-900: #e6e5e4;
+
+  --color-ciano: #53b1d8;
+  --color-ciano-100: #233036;
+  --color-ciano-200: #294049;
+  --color-ciano-300: #305260;
+  --color-ciano-400: #396b7f;
+  --color-ciano-500: #458caa;
+  --color-ciano-600: #73bedf;
+  --color-ciano-700: #8cc9e4;
+  --color-ciano-800: #aad7ec;
+  --color-ciano-900: #cbe6f3;
+
+  --color-magenta: #f0609a;
+  --color-magenta-100: #3c242c;
+  --color-magenta-200: #522b39;
+  --color-magenta-300: #6b3349;
+  --color-magenta-400: #8e3f5e;
+  --color-magenta-500: #bd4f7b;
+  --color-magenta-600: #f67caa;
+  --color-magenta-700: #fa93b7;
+  --color-magenta-800: #feb0c9;
+  --color-magenta-900: #ffcede;
+
+  --sombra-sm: 0 0 0 1px var(--color-divisor), 0 1px 2px rgb(0 0 0 / 0.35);
+  --sombra-md: 0 0 0 1px var(--color-divisor), 0 4px 14px rgb(0 0 0 / 0.4);
+  --sombra-lg: 0 0 0 1px var(--color-divisor), 0 14px 36px rgb(0 0 0 / 0.5);
+
+  --faixa: #1f1d1c;
+  --sessao: #252321;
+  --cartao: #2f2c2a;
+  --pontilhado: color-mix(in srgb, var(--color-texto) 10%, transparent);
+
+  color-scheme: dark;
+}
+
+/* A cor de cada estado. Tudo que usa var(--c) pega a cor certa. */
+:root {
+  --c-rodando: var(--color-ciano);
+  --c-esperando: var(--color-magenta);
+  --c-parada: var(--color-neutro-600);
+  --c-encerrada: var(--color-neutro-500);
+  --c-concluido: var(--color-neutro-700);
+  --c-interrompido: var(--color-neutro-500);
+}
+
+html,
+body,
+#raiz {
+  height: 100%;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--color-fundo);
+    color: var(--color-texto);
+    font-family: var(--font-serifa);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+  h6 {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  button {
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ciano);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-ciano) 30%, transparent);
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-neutro-600) 45%, transparent);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ============================================================================
+   As classes do design (iguais às do vlauncher).
+   ========================================================================== */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--color-texto);
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+  }
+  .btn-primario {
+    background: var(--color-ciano);
+    color: var(--color-fundo);
+  }
+  .btn-primario:not(:disabled):hover {
+    background: var(--color-ciano-600);
+  }
+  .btn-secundario {
+    border-color: var(--color-divisor);
+  }
+  .btn-secundario:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+  }
+  .btn-secundario:not(:disabled):active {
+    background: color-mix(in srgb, var(--color-texto) 14%, transparent);
+  }
+  .btn-fantasma {
+    color: var(--color-ciano);
+    padding-inline: 5px;
+  }
+  .btn-fantasma:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-ciano) 10%, transparent);
+  }
+  .btn-icone {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+  .btn-icone:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+  }
+  .btn-pequeno {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .btn-perigo {
+    color: var(--color-magenta);
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    padding: 3px 10px;
+    border-radius: 1.5px;
+    white-space: nowrap;
+  }
+  .tag-ciano {
+    background: var(--color-ciano-100);
+    color: var(--color-ciano-800);
+  }
+  .tag-magenta {
+    background: var(--color-magenta-100);
+    color: var(--color-magenta-800);
+  }
+  .tag-neutra {
+    background: var(--color-neutro-200);
+    color: var(--color-neutro-800);
+  }
+
+  .seg {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--color-divisor);
+    border-radius: var(--radius-md);
+  }
+  .seg-opcao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+    background: transparent;
+    border: 0;
+  }
+  .seg-opcao + .seg-opcao {
+    border-left: 1px solid var(--color-divisor);
+  }
+  .seg-opcao[aria-pressed='true'] {
+    background: var(--color-ciano);
+    color: var(--color-fundo);
+  }
+  .seg-opcao[aria-pressed='false']:hover {
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+  }
+
+  .campo {
+    width: 100%;
+    min-height: 34px;
+    padding: 5px 10px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--color-texto);
+    caret-color: var(--color-ciano);
+    background: var(--color-superficie);
+    border: 1px solid var(--color-divisor);
+    border-radius: var(--radius-md);
+  }
+  .campo:hover {
+    border-color: color-mix(in srgb, var(--color-texto) 45%, transparent);
+  }
+  .campo:focus-visible {
+    border-color: var(--color-ciano);
+    outline-offset: 0;
+  }
+  .campo option {
+    background-color: var(--color-superficie);
+    color: var(--color-texto);
+  }
+
+  /* O logo: tintas no papel (multiply). No escuro, viram luz sobre a tinta (screen). */
+  .tinta {
+    mix-blend-mode: multiply;
+  }
+  [data-tema='escuro'] .tinta {
+    mix-blend-mode: screen;
+  }
+}
+
+/* ============================================================================
+   O vAgents.
+   ========================================================================== */
+
+.is-running {
+  --c: var(--c-rodando);
+}
+.is-waiting {
+  --c: var(--c-esperando);
+}
+.is-idle {
+  --c: var(--c-parada);
+}
+.is-ended {
+  --c: var(--c-encerrada);
+}
+.is-done {
+  --c: var(--c-concluido);
+}
+.is-interrupted {
+  --c: var(--c-interrompido);
+}
+
+.ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c, var(--c-parada));
+  flex: none;
+}
+.is-running > .ponto,
+.is-running .ponto-vivo {
+  animation: pulso 1.6s ease-out infinite;
+}
+.is-waiting > .ponto,
+.is-waiting .ponto-vivo {
+  animation: pulso 1.1s ease-out infinite;
+}
+@keyframes pulso {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+/* O selo de estado: o ponto e o nome, na cor do estado. */
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px 2px 8px;
+  border-radius: 1.5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 13%, transparent);
+  flex: none;
+  white-space: nowrap;
+}
+
+/* ---------- A barra de cima ---------- */
+
+.barra {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 10px 18px;
+  background: var(--color-fundo);
+  border-bottom: 1px solid var(--color-divisor);
+  position: relative;
+  z-index: 5;
+}
+
+.marca-nome {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.contador {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: 13px;
+  color: var(--color-neutro-700);
+}
+.contador:hover:not(:disabled) {
+  border-color: var(--c);
+  color: var(--color-texto);
+}
+.contador:disabled {
+  opacity: 0.45;
+}
+.contador-n {
+  font-weight: 700;
+  color: var(--color-texto);
+  font-variant-numeric: tabular-nums;
+}
+.contador.is-waiting:not(:disabled) {
+  border-color: color-mix(in srgb, var(--c-esperando) 55%, var(--color-divisor));
+  background: color-mix(in srgb, var(--c-esperando) 9%, transparent);
+}
+
+.esperando-item {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 0;
+}
+.esperando-item:hover {
+  outline: 1px solid var(--color-magenta);
+}
+
+/* Enquanto você arrasta uma sessão: soltar aqui cria um grupo novo com ela. Flutua sobre o canvas, para
+   nada mudar de lugar durante o arraste. */
+.soltar-novo {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  box-shadow: var(--sombra-md);
+  border: 1.5px dashed var(--color-ciano);
+  color: var(--color-ciano);
+  background: var(--color-ciano-100);
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+}
+.soltar-novo.is-alvo {
+  background: var(--color-ciano);
+  color: var(--color-fundo);
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 350px;
+  padding: 14px 16px;
+  background: var(--sessao);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.checar {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.checar input {
+  accent-color: var(--color-ciano);
+  margin-top: 3px;
+}
+
+/* ---------- O canvas ---------- */
+
+.canvas {
+  position: relative;
+  min-height: 0;
+}
+
+.react-flow {
+  --xy-background-color: var(--color-fundo);
+  --xy-background-pattern-color: var(--pontilhado);
+  --xy-controls-button-background-color: var(--sessao);
+  --xy-controls-button-background-color-hover: var(--color-neutro-200);
+  --xy-controls-button-color: var(--color-texto);
+  --xy-controls-button-border-color: var(--color-divisor);
+  --xy-minimap-background-color: var(--sessao);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--color-fundo) 70%, transparent);
+  --xy-attribution-background-color: transparent;
+  font-family: var(--font-serifa);
+}
+
+.react-flow__node {
+  transition: transform 260ms ease;
+}
+
+.react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+  min-width: 0;
+  min-height: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+}
+
+.react-flow__controls {
+  box-shadow: var(--sombra-md);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.react-flow__minimap {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-md);
+  overflow: hidden;
+}
+.react-flow__minimap-node.mm {
+  fill: var(--c, var(--color-neutro-400));
+  stroke: none;
+}
+.react-flow__minimap-node.mm-sessao {
+  fill: color-mix(in srgb, var(--c) 16%, var(--sessao));
+  stroke: var(--c);
+  stroke-width: 6;
+}
+.react-flow__minimap-node.mm-faixa {
+  fill: var(--faixa);
+  stroke: var(--color-divisor);
+  stroke-width: 4;
+}
+
+/* ---------- O grupo (a faixa) ---------- */
+
+.faixa {
+  width: 100%;
+  height: 100%;
+  background: var(--faixa);
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-lg);
+}
+.faixa.is-sem-grupo {
+  background: transparent;
+  border-style: dashed;
+}
+.faixa.is-alvo {
+  border: 2px dashed var(--color-ciano);
+  background: color-mix(in srgb, var(--color-ciano) 8%, var(--faixa));
+}
+
+.faixa-cabeca {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px 0 22px;
+}
+.faixa-nome {
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+.faixa.is-sem-grupo .faixa-nome {
+  color: var(--color-neutro-600);
+  font-style: italic;
+  cursor: default;
+}
+.faixa-acoes {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.faixa-vazia {
+  margin: 0 24px;
+  height: 72px;
+  display: grid;
+  place-content: center;
+  border: 1.5px dashed var(--color-divisor);
+  border-radius: var(--radius-lg);
+  color: var(--color-neutro-600);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.editar-nome {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  background: var(--color-fundo);
+  border: 1px solid var(--color-ciano);
+  border-radius: var(--radius-md);
+  padding: 1px 6px;
+  min-width: 0;
+  width: 100%;
+  outline: none;
+}
+
+/* ---------- A sessão ---------- */
+
+.sessao {
+  width: 100%;
+  height: 100%;
+  background: var(--sessao);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-md);
+  position: relative;
+}
+.sessao::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--c);
+}
+.sessao.is-waiting {
+  animation: espera 2.2s ease-in-out infinite;
+}
+@keyframes espera {
+  0%,
+  100% {
+    box-shadow: var(--sombra-md), 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: var(--sombra-md), 0 0 0 6px color-mix(in srgb, var(--c-esperando) 28%, transparent);
+  }
+}
+.sessao.is-ended {
+  opacity: 0.62;
+}
+.sessao.is-selected {
+  outline: 2px solid var(--color-ciano);
+  outline-offset: 3px;
+}
+
+.sessao-cabeca {
+  height: 124px;
+  padding: 18px 22px 0;
+  cursor: grab;
+}
+.sessao-cabeca:active {
+  cursor: grabbing;
+}
+.sessao-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-neutro-700);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sessao-projeto {
+  font-weight: 650;
+  color: var(--color-texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sessao-rotulo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-neutro-200);
+  color: var(--color-neutro-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+.sessao-idade {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.sessao-titulo {
+  margin: 10px 0 4px;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.22;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sessao-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.42;
+  color: var(--color-neutro-700);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sessao-desc.is-vazia {
+  font-style: italic;
+  color: var(--color-neutro-500);
+}
+
+/* ---------- Os agentes ---------- */
+
+.agente {
+  width: 100%;
+  height: 100%;
+  padding: 11px 13px 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--cartao);
+  border-left: 3px solid var(--c);
+  box-shadow: var(--sombra-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.agente.is-done,
+.agente.is-interrupted {
+  background: color-mix(in srgb, var(--cartao) 55%, var(--sessao));
+  box-shadow: none;
+}
+.agente.is-interrupted {
+  border-left-style: dashed;
+}
+.agente.is-selected {
+  outline: 2px solid var(--color-ciano);
+  outline-offset: 2px;
+}
+.agente-principal {
+  border-left-width: 4px;
+}
+.agente-principal.is-waiting {
+  background: color-mix(in srgb, var(--color-magenta) 9%, var(--cartao));
+}
+
+.agente-topo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  min-width: 0;
+}
+.agente-tipo {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-neutro-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agente-lado {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-neutro-600);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.agente-desc {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.agente-agora {
+  margin-top: auto;
+  font-size: 12.5px;
+  color: var(--color-neutro-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agente-principal .agente-agora {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--color-texto);
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.agente-agora.is-forte {
+  color: var(--c-esperando);
+  font-weight: 650;
+}
+.agente-pe {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--color-neutro-600);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.mais {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-divisor);
+  color: var(--color-neutro-700);
+  font-size: 13px;
+  cursor: pointer;
+}
+.mais:hover {
+  border-color: var(--color-ciano);
+  color: var(--color-texto);
+}
+.mais-acao {
+  color: var(--color-ciano);
+  font-weight: 600;
+  flex: none;
+}
+
+/* ---------- As ligações ---------- */
+
+.react-flow__edge-path.ligacao {
+  stroke: var(--color-neutro-400);
+  stroke-width: 1.5;
+}
+.fluxo.is-running .ligacao {
+  stroke: var(--c-rodando);
+  stroke-width: 2;
+}
+.fluxo.is-done .ligacao {
+  stroke: color-mix(in srgb, var(--c-concluido) 45%, var(--color-neutro-300));
+}
+.fluxo.is-interrupted .ligacao {
+  stroke: var(--c-interrompido);
+  stroke-dasharray: 5 4;
+}
+.fluxo.is-more .ligacao {
+  stroke-dasharray: 2 5;
+}
+.fluxo-pulso circle {
+  fill: var(--c-rodando);
+}
+
+/* ---------- O painel de detalhes ---------- */
+
+.detalhes {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: min(410px, calc(100% - 24px));
+  overflow: auto;
+  padding: 20px 20px 24px;
+  background: var(--sessao);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.detalhes-titulo {
+  font-size: 22px;
+  line-height: 1.25;
+  padding-right: 28px;
+  overflow-wrap: anywhere;
+}
+.detalhes-alerta {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-magenta-100);
+  color: var(--color-magenta-800);
+  font-size: 14px;
+}
+.detalhes-secao h6 {
+  margin-bottom: 6px;
+  color: var(--color-neutro-600);
+}
+.detalhes-texto {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow: auto;
+  line-height: 1.5;
+  font-size: 14.5px;
+}
+.detalhes-grade {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 7px 14px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.detalhes-grade dt {
+  color: var(--color-neutro-600);
+}
+.detalhes-grade dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.codigo {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.copiar-texto {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-superficie);
+  overflow-wrap: anywhere;
+  color: var(--color-neutro-700);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---------- O arraste ---------- */
+
+.fantasma {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform: translate(14px, 12px);
+  max-width: 320px;
+  padding: 8px 12px;
+  background: var(--sessao);
+  border-left: 3px solid var(--color-ciano);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sombra-lg);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fantasma small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--color-neutro-700);
+}
+
+.vazio {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--color-neutro-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fluxo-pulso {
+    display: none;
+  }
+  .ponto,
+  .ponto-vivo,
+  .sessao,
+  .react-flow__node {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ============================================================================
+   O popup de aviso (a mesma página, numa janela pequena e transparente no canto da tela).
+   A janela tem 8 px de folga em volta do cartão, para a sombra.
+   ========================================================================== */
+
+:root[data-janela='aviso'],
+:root[data-janela='aviso'] body {
+  background: transparent;
+  overflow: hidden;
+}
+
+.aviso {
+  --c: var(--c-esperando);
+  position: fixed;
+  inset: 8px;
+  display: flex;
+  align-items: stretch;
+  background: var(--sessao);
+  border-left: 4px solid var(--c-esperando);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+  overflow: hidden;
+  animation: aviso-entra 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.aviso.is-saindo {
+  animation: aviso-sai 180ms ease-in forwards;
+}
+@keyframes aviso-entra {
+  from {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+}
+@keyframes aviso-sai {
+  to {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+}
+
+.aviso-corpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 6px 12px 16px;
+  background: none;
+  border: 0;
+  text-align: left;
+  color: inherit;
+}
+.aviso-corpo:hover .aviso-titulo {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-texto) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.aviso-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.aviso-motivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--c-esperando);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aviso-titulo {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aviso-projeto {
+  font-size: 12.5px;
+  color: var(--color-neutro-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aviso-fechar {
+  align-self: flex-start;
+  margin: 8px 8px 0 0;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-neutro-600);
+}
+.aviso-fechar:hover {
+  background: color-mix(in srgb, var(--color-texto) 8%, transparent);
+  color: var(--color-texto);
+}
+
+.aviso-tempo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--c-esperando);
+  opacity: 0.5;
+  transform-origin: left;
+  animation-name: aviso-tempo;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes aviso-tempo {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aviso,
+  .aviso.is-saindo {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   O crédito do autor ("Desenvolvido por" e a assinatura da marca), no fim dos Ajustes.
+   ========================================================================== */
+
+.credito {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-divisor);
+  font-size: 15px;
+  color: var(--color-neutro-600);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.credito:hover {
+  color: var(--color-texto);
+}
+.credito-por {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.credito-assinatura {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  color: var(--color-texto);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.credito-simbolo {
+  height: 1.6em;
+  width: auto;
+  flex: none;
+}
+
+/* ============================================================================
+   O diálogo (as contas do Claude Code).
+   ========================================================================== */
+
+.dialogo-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, #000 38%, transparent);
+}
+.dialogo {
+  width: min(600px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px 20px;
+  background: var(--sessao);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+}
+.conta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-md);
+}

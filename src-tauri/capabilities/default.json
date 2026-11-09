@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões da janela principal e dos popups de aviso. As sessões, as preferências e a organização passam pelos comandos do próprio app (src-tauri/src).",
+  "windows": ["principal", "aviso-*"],
+  "permissions": ["core:default"]
+}
