@@ -1,6 +1,6 @@
 import type { Edge, Node } from '@xyflow/react'
 import type { AgentStatus, AgentView, SessionStatus, SessionView, Snapshot } from '../shared/model.ts'
-import { VAZIA, grupoDaSessao, nomeDaSessao, type Grupo, type Organizacao } from './lib/organizacao.ts'
+import { VAZIA, corDaSessao, grupoDaSessao, nomeDaSessao, posicaoDaSessao, type Grupo, type Organizacao } from './lib/organizacao.ts'
 
 /** Medidas fixas (em pixels do canvas) usadas no layout e nos componentes. */
 export const SIZE = {
@@ -32,6 +32,8 @@ export const SIZE = {
   gapSession: 48,
   /** Concluídos que continuam à mostra antes de recolher o resto. */
   recentDone: 3,
+  /** Entre os cards arrumados à mão, quando um empurra o outro. */
+  folga: 24,
 } as const
 
 export interface Counts {
@@ -40,7 +42,14 @@ export interface Counts {
   interrupted: number
 }
 
-export type SessionNodeData = { session: SessionView; nome: string; selected: boolean; multiConfig: boolean }
+export type SessionNodeData = {
+  session: SessionView
+  nome: string
+  selected: boolean
+  multiConfig: boolean
+  /** A cor que você deu ao card (null: a de sempre). */
+  cor: string | null
+}
 
 /** Quantas sessões de cada estado. */
 export type StatusCounts = Record<SessionStatus, number>
@@ -84,8 +93,6 @@ export interface GraphOptions {
   organizacao?: Organizacao
   /** O grupo com o nome em edição. */
   editandoGrupo?: string | null
-  /** Onde a sessão arrastada cairia agora: o id do grupo, ou SEM_GRUPO. */
-  alvo?: string | null
 }
 
 /** O alvo "sem grupo" do arraste. */
@@ -105,6 +112,15 @@ export interface Selection {
   agent?: AgentView
 }
 
+/** Onde o card de uma sessão ficou no canvas, e em que faixa (o id do grupo, ou SEM_GRUPO). */
+export interface CaixaDaSessao {
+  grupo: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface Graph {
   nodes: FlowNode[]
   edges: FlowEdge[]
@@ -114,6 +130,14 @@ export interface Graph {
   lookup: Map<string, Selection>
   /** As faixas dos grupos (vazio quando não há grupos). */
   areas: AreaDoGrupo[]
+  /** O card de cada sessão à mostra, pela chave da sessão. */
+  caixas: Map<string, CaixaDaSessao>
+  /** O canto do miolo de cada faixa aberta (sem grupos, só SEM_GRUPO, em 0,0): as posições contam daqui. */
+  origens: Map<string, { x: number; y: number }>
+  /** As faixas com cards arrumados à mão. */
+  manuais: Set<string>
+  /** Os nós e as ligações de cada sessão, para o card andar inteiro no arraste. */
+  porSessao: Map<string, { nodes: string[]; edges: string[] }>
 }
 
 export const sessionNodeId = (key: string) => `s:${key}`
@@ -356,11 +380,16 @@ function sessionTree(s: SessionView, opts: GraphOptions, lookup: Map<string, Sel
   }
 }
 
+/** As sessões à mostra: as abertas e as encerradas dentro da janela escolhida (0: nenhuma encerrada). */
+export function sessoesVisiveis(snapshot: Snapshot, endedWindowMs: number): SessionView[] {
+  return snapshot.sessions.filter(
+    (s) => s.status !== 'ended' || (endedWindowMs > 0 && snapshot.generatedAt - s.updatedAt <= endedWindowMs),
+  )
+}
+
 /** Monta os nós e as ligações: uma caixa por sessão, com a árvore de agentes dentro. */
 export function buildGraph(snapshot: Snapshot, opts: GraphOptions): Graph {
-  const sessions = snapshot.sessions.filter(
-    (s) => s.status !== 'ended' || (opts.endedWindowMs > 0 && snapshot.generatedAt - s.updatedAt <= opts.endedWindowMs),
-  )
+  const sessions = sessoesVisiveis(snapshot, opts.endedWindowMs)
   const org = opts.organizacao ?? VAZIA
   const multiConfig = new Set(sessions.map((s) => s.configDir)).size > 1
   const lookup = new Map<string, Selection>()
@@ -381,30 +410,40 @@ export function buildGraph(snapshot: Snapshot, opts: GraphOptions): Graph {
   const nodes: FlowNode[] = []
   const edges: FlowEdge[] = []
   const areas: AreaDoGrupo[] = []
+  const caixas = new Map<string, CaixaDaSessao>()
+  const origens = new Map<string, { x: number; y: number }>()
+  const manuais = new Set<string>()
+  const porSessao = new Map<string, { nodes: string[]; edges: string[] }>()
 
-  const sessionNode = (box: Box, x: number, y: number) => {
+  const sessionNode = (box: Box, grupo: string, x: number, y: number) => {
     const id = sessionNodeId(box.s.key)
     lookup.set(id, { session: box.s })
+    const n0 = nodes.length
+    const e0 = edges.length
     nodes.push({
       id,
       type: 'session',
       position: { x, y },
-      data: { session: box.s, nome: nomeDaSessao(org, box.s), selected: opts.selectedId === id, multiConfig },
+      data: { session: box.s, nome: nomeDaSessao(org, box.s), selected: opts.selectedId === id, multiConfig, cor: corDaSessao(org, box.s.key) },
       width: box.w,
       height: box.h,
       zIndex: 1,
     })
     place(box.tree, x + SIZE.pad, y + SIZE.head, box.memo, nodes, edges)
+    caixas.set(box.s.key, { grupo, x, y, w: box.w, h: box.h })
+    porSessao.set(box.s.key, { nodes: nodes.slice(n0).map((n) => n.id), edges: edges.slice(e0).map((e) => e.id) })
   }
 
   let totalW: number
   let totalH: number
   if (org.grupos.length === 0) {
-    // Sem grupos: as sessões direto no canvas, sem faixa nenhuma.
-    const shelf = packShelves(boxes, rowLimit)
-    for (const { box, x, y } of shelf.placed) sessionNode(box, x, y)
-    totalW = shelf.w
-    totalH = shelf.h
+    // Sem grupos: as sessões direto no canvas, sem faixa nenhuma (e as posições contam do 0,0).
+    const arranjo = arranjar(boxes, (s) => posicaoDaSessao(org, s), rowLimit)
+    for (const { box, x, y } of arranjo.placed) sessionNode(box, SEM_GRUPO, x, y)
+    origens.set(SEM_GRUPO, { x: 0, y: 0 })
+    if (arranjo.manual) manuais.add(SEM_GRUPO)
+    totalW = arranjo.maxX - arranjo.minX
+    totalH = arranjo.maxY - arranjo.minY
   } else {
     const porGrupo = new Map<string, Box[]>()
     for (const box of boxes) {
@@ -413,21 +452,31 @@ export function buildGraph(snapshot: Snapshot, opts: GraphOptions): Graph {
       if (lista) lista.push(box)
       else porGrupo.set(id, [box])
     }
-    const laneW = rowLimit + 2 * SIZE.lanePad
-    const faixas: (Grupo | null)[] = [...org.grupos, null]
-    let y = 0
-    faixas.forEach((grupo, i) => {
+    // Dentro de uma faixa, nada fica antes do canto do miolo (por cima do cabeçalho ou fora dela).
+    const naFaixa = (s: SessionView) => {
+      const p = posicaoDaSessao(org, s)
+      return p && { x: Math.max(0, p.x), y: Math.max(0, p.y) }
+    }
+    const faixas = [...org.grupos, null].map((grupo: Grupo | null) => {
       const id = grupo?.id ?? SEM_GRUPO
       const doGrupo = porGrupo.get(id) ?? []
+      const arranjo = grupo?.recolhido || doGrupo.length === 0 ? null : arranjar(doGrupo, naFaixa, rowLimit)
+      return { grupo, id, doGrupo, arranjo }
+    })
+    const laneW = Math.max(rowLimit, ...faixas.map((f) => f.arranjo?.maxX ?? 0)) + 2 * SIZE.lanePad
+    let y = 0
+    faixas.forEach(({ grupo, id, doGrupo, arranjo }, i) => {
       const contagem: StatusCounts = { waiting: 0, running: 0, idle: 0, ended: 0 }
       for (const b of doGrupo) contagem[b.s.status]++
+      const origem = { x: SIZE.lanePad, y: y + SIZE.laneHead }
+      if (!grupo?.recolhido) origens.set(id, origem)
       let miolo: number
       if (grupo?.recolhido) miolo = 0
-      else if (doGrupo.length === 0) miolo = SIZE.laneEmpty
+      else if (!arranjo) miolo = SIZE.laneEmpty
       else {
-        const shelf = packShelves(doGrupo, rowLimit)
-        for (const p of shelf.placed) sessionNode(p.box, p.x + SIZE.lanePad, y + SIZE.laneHead + p.y)
-        miolo = shelf.h + SIZE.lanePad
+        for (const p of arranjo.placed) sessionNode(p.box, id, origem.x + p.x, origem.y + p.y)
+        if (arranjo.manual) manuais.add(id)
+        miolo = arranjo.maxY + SIZE.lanePad
       }
       const h = SIZE.laneHead + miolo
       nodes.push({
@@ -438,7 +487,7 @@ export function buildGraph(snapshot: Snapshot, opts: GraphOptions): Graph {
           grupo,
           contagem,
           total: doGrupo.length,
-          alvo: opts.alvo === id,
+          alvo: false,
           editando: grupo !== null && opts.editandoGrupo === grupo.id,
           primeiro: i === 0,
           ultimo: i === org.grupos.length - 1,
@@ -454,17 +503,151 @@ export function buildGraph(snapshot: Snapshot, opts: GraphOptions): Graph {
     totalH = y - SIZE.laneGap
   }
 
-  // As faixas vão primeiro: o minimapa desenha na ordem da lista (sem olhar o zIndex).
-  const faixasPrimeiro = [...nodes.filter((n) => n.type === 'lane'), ...nodes.filter((n) => n.type !== 'lane')]
+  // Todo nó tem largura e altura fixas, então já nasce medido. Sem isso, o React Flow trata cada nó novo
+  // (o mapa é refeito a cada retrato, e a cada quadro do arraste) como nunca medido: esquece onde ficam
+  // os pontos de ligação, as ligações somem até ele medir de novo e não dá para animá-las.
+  for (const n of nodes) n.measured = { width: n.width, height: n.height }
+
+  // A ordem da lista é a ordem no DOM, e tem de ser estável: o React move o elemento de um nó que mudou
+  // de posição na lista, e o navegador não anima um elemento movido (o card que troca de grupo pularia
+  // para o lugar novo, em vez de deslizar, e as ligações dele junto). Então as faixas vão primeiro (o
+  // minimapa desenha na ordem da lista, sem olhar o zIndex) e depois os nós e as ligações de cada sessão,
+  // as sessões pela chave, que não muda quando a sessão troca de grupo ou de lugar.
+  const ordem = new Map<string, string>()
+  for (const n of nodes) if (n.type === 'lane') ordem.set(n.id, `0${n.id}`)
+  for (const [chave, dela] of porSessao) for (const id of [...dela.nodes, ...dela.edges]) ordem.set(id, `1${chave}\u0000${id}`)
+  const naOrdem = (a: { id: string }, b: { id: string }) => {
+    const x = ordem.get(a.id) ?? a.id
+    const y = ordem.get(b.id) ?? b.id
+    return x < y ? -1 : x > y ? 1 : 0
+  }
 
   return {
-    nodes: faixasPrimeiro,
-    edges,
+    nodes: nodes.sort(naOrdem),
+    edges: edges.sort(naOrdem),
     sessions,
     boundsKey: `${sessions.map((s) => s.key).join(',')}|${org.grupos.map((g) => g.id).join(',')}|${Math.round(totalW)}x${Math.round(totalH)}`,
     lookup,
     areas,
+    caixas,
+    origens,
+    manuais,
+    porSessao,
   }
+}
+
+/**
+ * Acende o grupo onde a sessão arrastada cairia agora (`alvo`: o id do grupo, ou SEM_GRUPO). Fica fora
+ * do buildGraph porque o alvo muda no meio do arraste: só as faixas que acendem ou apagam viram objetos
+ * novos, e o resto do desenho não é refeito.
+ */
+export function marcarAlvo(graph: Graph, alvo: string | null): Graph {
+  const faixa = alvo === null ? null : laneNodeId(alvo)
+  let mudou = false
+  const nodes = graph.nodes.map((n) => {
+    if (n.type !== 'lane' || n.data.alvo === (n.id === faixa)) return n
+    mudou = true
+    return { ...n, data: { ...n.data, alvo: n.id === faixa } }
+  })
+  return mudou ? { ...graph, nodes } : graph
+}
+
+/**
+ * O card da sessão `chave` com o canto em (x, y), enquanto você o arrasta: os nós e as ligações dele
+ * andam juntos e ficam por cima dos outros; o resto do desenho continua igual (os mesmos objetos).
+ * A classe is-arrastando tira a transição deles: o card fica colado no ponteiro.
+ */
+export function deslocarSessao(graph: Graph, chave: string, x: number, y: number): Graph {
+  const caixa = graph.caixas.get(chave)
+  const dela = graph.porSessao.get(chave)
+  if (!caixa || !dela) return graph
+  const dx = x - caixa.x
+  const dy = y - caixa.y
+  const nos = new Set(dela.nodes)
+  const ligacoes = new Set(dela.edges)
+  return {
+    ...graph,
+    nodes: graph.nodes.map((n) =>
+      nos.has(n.id)
+        ? ({ ...n, position: { x: n.position.x + dx, y: n.position.y + dy }, zIndex: (n.zIndex ?? 0) + 10, className: 'is-arrastando' } as FlowNode)
+        : n,
+    ),
+    edges: graph.edges.map((e) => {
+      if (!ligacoes.has(e.id)) return e
+      const r = e.data?.route
+      const data = e.data && r ? { ...e.data, route: { lane0: r.lane0 + dx, busY: r.busY + dy, laneK: r.laneK === null ? null : r.laneK + dx } } : e.data
+      return { ...e, data, zIndex: (e.zIndex ?? 0) + 10, className: 'is-arrastando' }
+    }),
+  }
+}
+
+interface Colocada {
+  box: Box
+  x: number
+  y: number
+}
+
+interface Arranjo {
+  placed: Colocada[]
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  /** Algum card tem lugar marcado. */
+  manual: boolean
+}
+
+/**
+ * Os cards de uma faixa (ou do canvas todo, sem grupos). Sem nenhum lugar marcado, as prateleiras
+ * automáticas. Com lugares marcados, cada card no seu; os que ainda não têm lugar (sessões novas) numa
+ * prateleira abaixo de todos; e um card que cresceu, ou caiu por cima de outro, é empurrado.
+ */
+function arranjar(boxes: Box[], posicaoDe: (s: SessionView) => { x: number; y: number } | null, limite: number): Arranjo {
+  const marcadas: Colocada[] = []
+  const novas: Box[] = []
+  for (const box of boxes) {
+    const p = posicaoDe(box.s)
+    if (p) marcadas.push({ box, x: p.x, y: p.y })
+    else novas.push(box)
+  }
+  if (marcadas.length === 0) {
+    const shelf = packShelves(boxes, limite)
+    return { placed: shelf.placed, minX: 0, minY: 0, maxX: shelf.w, maxY: shelf.h, manual: false }
+  }
+  const placed = afastar(marcadas)
+  if (novas.length > 0) {
+    const x0 = Math.min(...placed.map((p) => p.x))
+    const y0 = Math.max(...placed.map((p) => p.y + p.box.h)) + SIZE.gapSession
+    for (const p of packShelves(novas, limite).placed) placed.push({ box: p.box, x: x0 + p.x, y: y0 + p.y })
+  }
+  return {
+    placed,
+    minX: Math.min(...placed.map((p) => p.x)),
+    minY: Math.min(...placed.map((p) => p.y)),
+    maxX: Math.max(...placed.map((p) => p.x + p.box.w)),
+    maxY: Math.max(...placed.map((p) => p.y + p.box.h)),
+    manual: true,
+  }
+}
+
+/**
+ * Tira as sobreposições sem mudar a ordem: de cima para baixo, o card que encosta num dos anteriores anda
+ * para o lado (se estava mais à direita dele do que abaixo) ou para baixo. Assim o card que cresce empurra
+ * o vizinho de baixo, ou o do lado, e o card solto por cima de outro se encaixa ao lado ou embaixo dele.
+ */
+export function afastar<T extends { x: number; y: number; box: { w: number; h: number } }>(cards: T[]): T[] {
+  const ordem = cards.map((c) => ({ ...c })).sort((a, b) => a.y - b.y || a.x - b.x)
+  const prontos: T[] = []
+  for (const c of ordem) {
+    for (let volta = 0; volta < 500; volta++) {
+      const o = prontos.find((p) => c.x < p.x + p.box.w && p.x < c.x + c.box.w && c.y < p.y + p.box.h && p.y < c.y + c.box.h)
+      if (!o) break
+      if (c.x - o.x > c.y - o.y) c.x = o.x + o.box.w + SIZE.folga
+      else c.y = o.y + o.box.h + SIZE.folga
+    }
+    prontos.push(c)
+  }
+  return prontos
 }
 
 interface Box {

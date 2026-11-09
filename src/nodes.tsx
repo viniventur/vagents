@@ -1,12 +1,16 @@
 import { Handle, Position, type NodeProps, type NodeTypes } from '@xyflow/react'
 import { CaretDown, CaretRight, CaretUp, Check, PencilSimple, Trash, X } from '@phosphor-icons/react'
-import { createContext, memo, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createContext, memo, useContext, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { SessionView } from '../shared/model.ts'
 import { NowContext } from './hooks.ts'
 import type { AgentFlowNode, Counts, LaneFlowNode, MainFlowNode, MoreFlowNode, SessionFlowNode, StatusCounts } from './layout.ts'
+import type { Grupo } from './lib/organizacao.ts'
 import { AGENT_STATUS, SESSION_STATUS, duration, modelLabel, plural, relTime, waitingReason } from './text.ts'
 
-/** O que os nós pedem à tela (o App fornece): arrastar, renomear e mexer nos grupos. */
+/** De quem é a cor que o seletor está mudando: o quadro de um grupo ou o card de uma sessão. */
+export type AlvoDaCor = { tipo: 'grupo'; id: string } | { tipo: 'sessao'; chave: string }
+
+/** O que os nós pedem à tela (o App fornece): arrastar, renomear, colorir e mexer nos grupos. */
 export interface Acoes {
   iniciarArraste: (sessao: SessionView, nome: string, e: ReactPointerEvent) => void
   renomearSessao: (chave: string, nome: string) => void
@@ -15,18 +19,62 @@ export interface Acoes {
   recolherGrupo: (id: string) => void
   moverGrupo: (id: string, direcao: -1 | 1) => void
   apagarGrupo: (id: string) => void
+  /** Abre (ou fecha, se já está aberto para o mesmo alvo) o seletor de cor junto do botão. */
+  escolherCor: (alvo: AlvoDaCor, botao: HTMLElement, peloTeclado: boolean) => void
 }
 
 export const AcoesContext = createContext<Acoes | null>(null)
 
-function useAcoes(): Acoes {
+export function useAcoes(): Acoes {
   const acoes = useContext(AcoesContext)
   if (!acoes) throw new Error('AcoesContext sem provedor')
   return acoes
 }
 
-function cls(...parts: (string | false | undefined | null)[]): string {
+export function cls(...parts: (string | false | undefined | null)[]): string {
   return parts.filter(Boolean).join(' ')
+}
+
+/**
+ * O quadradinho da cor de um grupo ou de um card: cheio com a cor escolhida, ou tracejado (a de sempre).
+ * O clique abre o seletor e não chega ao que está embaixo (não arrasta o card nem abre o painel); o
+ * mouse não tira o foco de onde ele está (o nome do grupo que você está digitando, por exemplo).
+ */
+export function BotaoDeCor({
+  cor,
+  rotulo,
+  className,
+  aoClicar,
+}: {
+  cor: string | null
+  rotulo: string
+  className?: string
+  aoClicar: (botao: HTMLElement, peloTeclado: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      className={cls('cor-botao nodrag nopan', cor ? 'tem-cor' : 'is-padrao', className)}
+      style={cor ? ({ '--cor': cor } as CSSProperties) : undefined}
+      aria-label={rotulo}
+      title={cor ? `${rotulo}: ${cor}` : `${rotulo}: a de sempre. Clique para escolher outra.`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.preventDefault()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        aoClicar(e.currentTarget, e.detail === 0)
+      }}
+    />
+  )
+}
+
+/**
+ * Os nós só leem o `data`: mudar de lugar (no arraste, a cada quadro) não redesenha o conteúdo deles, só
+ * o invólucro do React Flow, que é quem posiciona.
+ */
+function soOData<P extends { data: unknown }>(antes: Readonly<P>, depois: Readonly<P>): boolean {
+  return antes.data === depois.data
 }
 
 export function Selo({ status }: { status: SessionView['status'] }) {
@@ -89,7 +137,7 @@ export function TextoEditavel({
   )
 }
 
-function idadeDaSessao(s: SessionView, now: number): string {
+export function idadeDaSessao(s: SessionView, now: number): string {
   if (s.status === 'ended') return `encerrada ${relTime(s.updatedAt, now)}`
   if (s.status === 'waiting' && s.statusSince) return `esperando ${relTime(s.statusSince, now)}`
   return s.startedAt ? `aberta ${relTime(s.startedAt, now)}` : ''
@@ -101,13 +149,16 @@ const SessionNode = memo(function SessionNode({ data }: NodeProps<SessionFlowNod
   const [editando, setEditando] = useState(false)
   const s = data.session
   return (
-    <div className={cls('sessao', `is-${s.status}`, data.selected && 'is-selected')}>
+    <div
+      className={cls('sessao', `is-${s.status}`, data.selected && 'is-selected', data.cor && 'tem-cor')}
+      style={data.cor ? ({ '--cor-cartao': data.cor } as CSSProperties) : undefined}
+    >
       <header
         className="sessao-cabeca nopan"
         onPointerDown={(e) => {
           if (e.button === 0 && !editando) acoes.iniciarArraste(s, data.nome, e)
         }}
-        title="Arraste para outro grupo"
+        title="Arraste para mudar o card de lugar, ou para outro grupo"
       >
         <div className="sessao-meta">
           <Selo status={s.status} />
@@ -117,6 +168,12 @@ const SessionNode = memo(function SessionNode({ data }: NodeProps<SessionFlowNod
           {s.gitBranch && s.gitBranch !== 'HEAD' && <span className="sessao-rotulo">{s.gitBranch}</span>}
           {data.multiConfig && <span className="sessao-rotulo">{s.account}</span>}
           <span className="sessao-idade">{idadeDaSessao(s, now)}</span>
+          <BotaoDeCor
+            cor={data.cor}
+            rotulo="Cor do card"
+            className="cor-botao-cartao"
+            aoClicar={(botao, peloTeclado) => acoes.escolherCor({ tipo: 'sessao', chave: s.key }, botao, peloTeclado)}
+          />
         </div>
         <h2 className="sessao-titulo">
           <TextoEditavel
@@ -140,9 +197,15 @@ const SessionNode = memo(function SessionNode({ data }: NodeProps<SessionFlowNod
       </header>
     </div>
   )
-})
+}, soOData)
 
-function textoDosSubagentes(c: Counts): string {
+/** O que o agente principal da sessão está fazendo (ou esperando). */
+export function agoraDaSessao(s: SessionView): string {
+  if (s.status === 'waiting') return `Esperando ${waitingReason(s.waitingFor)}`
+  return s.activity ?? (s.status === 'ended' ? 'Encerrada' : 'Sem atividade ainda')
+}
+
+export function textoDosSubagentes(c: Counts): string {
   const partes: string[] = []
   if (c.running) partes.push(plural(c.running, 'rodando', 'rodando'))
   if (c.done) partes.push(plural(c.done, 'concluído', 'concluídos'))
@@ -153,8 +216,7 @@ function textoDosSubagentes(c: Counts): string {
 const MainNode = memo(function MainNode({ data }: NodeProps<MainFlowNode>) {
   const now = useContext(NowContext)
   const s = data.session
-  const agora =
-    s.status === 'waiting' ? `Esperando ${waitingReason(s.waitingFor)}` : (s.activity ?? (s.status === 'ended' ? 'Encerrada' : 'Sem atividade ainda'))
+  const agora = agoraDaSessao(s)
   return (
     <div className={cls('agente', 'agente-principal', `is-${s.status}`, data.selected && 'is-selected')}>
       <div className="agente-topo">
@@ -172,7 +234,7 @@ const MainNode = memo(function MainNode({ data }: NodeProps<MainFlowNode>) {
       <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   )
-})
+}, soOData)
 
 const AgentNode = memo(function AgentNode({ data }: NodeProps<AgentFlowNode>) {
   const now = useContext(NowContext)
@@ -196,7 +258,7 @@ const AgentNode = memo(function AgentNode({ data }: NodeProps<AgentFlowNode>) {
       <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   )
-})
+}, soOData)
 
 const MoreNode = memo(function MoreNode({ data }: NodeProps<MoreFlowNode>) {
   const { hidden, expanded } = data
@@ -216,11 +278,11 @@ const MoreNode = memo(function MoreNode({ data }: NodeProps<MoreFlowNode>) {
       <span className="mais-acao">{expanded ? 'recolher' : 'mostrar'}</span>
     </div>
   )
-})
+}, soOData)
 
 const ORDEM: SessionView['status'][] = ['waiting', 'running', 'idle', 'ended']
 
-function Contagem({ contagem }: { contagem: StatusCounts }) {
+export function Contagem({ contagem }: { contagem: StatusCounts }) {
   const itens = ORDEM.filter((s) => contagem[s] > 0)
   if (itens.length === 0) return null
   return (
@@ -235,93 +297,140 @@ function Contagem({ contagem }: { contagem: StatusCounts }) {
   )
 }
 
-const LaneNode = memo(function LaneNode({ data }: NodeProps<LaneFlowNode>) {
+/** O cabeçalho de um grupo (ou do "sem grupo"): o nome, as contagens e as ações. No mapa e na lista. */
+export function CabecalhoDoGrupo({
+  grupo: g,
+  total,
+  contagem,
+  editando,
+  primeiro,
+  ultimo,
+  recolhido,
+  aoRecolher,
+}: {
+  grupo: Grupo | null
+  total: number
+  contagem: StatusCounts
+  editando: boolean
+  primeiro: boolean
+  ultimo: boolean
+  recolhido: boolean
+  /** Sem ele, não há o botão de recolher. */
+  aoRecolher?: () => void
+}) {
   const acoes = useAcoes()
   const [confirmando, setConfirmando] = useState(false)
+  return (
+    <header className="faixa-cabeca nopan">
+      {aoRecolher && (
+        <button
+          type="button"
+          className="btn btn-icone nodrag"
+          onClick={aoRecolher}
+          aria-expanded={!recolhido}
+          aria-label={recolhido ? 'Mostrar as sessões do grupo' : 'Recolher o grupo'}
+          title={recolhido ? 'Mostrar as sessões' : 'Recolher'}
+        >
+          {recolhido ? <CaretRight /> : <CaretDown />}
+        </button>
+      )}
+      {g && (
+        <BotaoDeCor
+          cor={g.cor ?? null}
+          rotulo={`Cor do grupo ${g.nome}`}
+          aoClicar={(botao, peloTeclado) => acoes.escolherCor({ tipo: 'grupo', id: g.id }, botao, peloTeclado)}
+        />
+      )}
+      <h3 className="faixa-nome min-w-0">
+        {g ? (
+          <TextoEditavel
+            className="block truncate"
+            valor={g.nome}
+            editando={editando}
+            aoComecar={() => acoes.editarGrupo(g.id)}
+            aoTerminar={(novo) => {
+              acoes.editarGrupo(null)
+              if (novo !== null) acoes.renomearGrupo(g.id, novo)
+            }}
+          />
+        ) : (
+          'Sem grupo'
+        )}
+      </h3>
+      <span className="faixa-total">{plural(total, 'sessão', 'sessões')}</span>
+      <Contagem contagem={contagem} />
+      {g && (
+        <div className="faixa-acoes nodrag">
+          {confirmando ? (
+            <>
+              <span className="text-[13px] mr-1">Apagar o grupo? As sessões ficam sem grupo.</span>
+              <button type="button" className="btn btn-pequeno btn-secundario btn-perigo" onClick={() => acoes.apagarGrupo(g.id)}>
+                <Check /> Apagar
+              </button>
+              <button type="button" className="btn btn-icone" onClick={() => setConfirmando(false)} aria-label="Não apagar">
+                <X />
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn btn-icone" onClick={() => acoes.editarGrupo(g.id)} aria-label="Renomear o grupo" title="Renomear">
+                <PencilSimple />
+              </button>
+              <button
+                type="button"
+                className="btn btn-icone"
+                disabled={primeiro}
+                onClick={() => acoes.moverGrupo(g.id, -1)}
+                aria-label="Subir o grupo"
+                title="Subir"
+              >
+                <CaretUp />
+              </button>
+              <button
+                type="button"
+                className="btn btn-icone"
+                disabled={ultimo}
+                onClick={() => acoes.moverGrupo(g.id, 1)}
+                aria-label="Descer o grupo"
+                title="Descer"
+              >
+                <CaretDown />
+              </button>
+              <button type="button" className="btn btn-icone" onClick={() => setConfirmando(true)} aria-label="Apagar o grupo" title="Apagar">
+                <Trash />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </header>
+  )
+}
+
+const LaneNode = memo(function LaneNode({ data }: NodeProps<LaneFlowNode>) {
+  const acoes = useAcoes()
   const g = data.grupo
   return (
-    <div className={cls('faixa', !g && 'is-sem-grupo', data.alvo && 'is-alvo')}>
-      <header className="faixa-cabeca nopan">
-        {g ? (
-          <button
-            type="button"
-            className="btn btn-icone nodrag"
-            onClick={() => acoes.recolherGrupo(g.id)}
-            aria-label={g.recolhido ? 'Mostrar as sessões do grupo' : 'Recolher o grupo'}
-            title={g.recolhido ? 'Mostrar as sessões' : 'Recolher'}
-          >
-            {g.recolhido ? <CaretRight /> : <CaretDown />}
-          </button>
-        ) : null}
-        <h3 className="faixa-nome min-w-0">
-          {g ? (
-            <TextoEditavel
-              className="block truncate"
-              valor={g.nome}
-              editando={data.editando}
-              aoComecar={() => acoes.editarGrupo(g.id)}
-              aoTerminar={(novo) => {
-                acoes.editarGrupo(null)
-                if (novo !== null) acoes.renomearGrupo(g.id, novo)
-              }}
-            />
-          ) : (
-            'Sem grupo'
-          )}
-        </h3>
-        <span className="text-[13px] text-neutro-600 whitespace-nowrap">{plural(data.total, 'sessão', 'sessões')}</span>
-        <Contagem contagem={data.contagem} />
-        {g && (
-          <div className="faixa-acoes nodrag">
-            {confirmando ? (
-              <>
-                <span className="text-[13px] mr-1">Apagar o grupo? As sessões ficam sem grupo.</span>
-                <button type="button" className="btn btn-pequeno btn-secundario btn-perigo" onClick={() => acoes.apagarGrupo(g.id)}>
-                  <Check /> Apagar
-                </button>
-                <button type="button" className="btn btn-icone" onClick={() => setConfirmando(false)} aria-label="Não apagar">
-                  <X />
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn btn-icone" onClick={() => acoes.editarGrupo(g.id)} aria-label="Renomear o grupo" title="Renomear">
-                  <PencilSimple />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-icone"
-                  disabled={data.primeiro}
-                  onClick={() => acoes.moverGrupo(g.id, -1)}
-                  aria-label="Subir o grupo"
-                  title="Subir"
-                >
-                  <CaretUp />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-icone"
-                  disabled={data.ultimo}
-                  onClick={() => acoes.moverGrupo(g.id, 1)}
-                  aria-label="Descer o grupo"
-                  title="Descer"
-                >
-                  <CaretDown />
-                </button>
-                <button type="button" className="btn btn-icone" onClick={() => setConfirmando(true)} aria-label="Apagar o grupo" title="Apagar">
-                  <Trash />
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </header>
+    <div
+      className={cls('faixa', !g && 'is-sem-grupo', g?.cor && 'tem-cor', data.alvo && 'is-alvo')}
+      style={g?.cor ? ({ '--cor-grupo': g.cor } as CSSProperties) : undefined}
+    >
+      <CabecalhoDoGrupo
+        grupo={g}
+        total={data.total}
+        contagem={data.contagem}
+        editando={data.editando}
+        primeiro={data.primeiro}
+        ultimo={data.ultimo}
+        recolhido={g?.recolhido === true}
+        aoRecolher={g ? () => acoes.recolherGrupo(g.id) : undefined}
+      />
       {!g?.recolhido && data.total === 0 && (
         <div className="faixa-vazia">{g ? 'Arraste sessões para cá' : 'Arraste para cá para tirar uma sessão do grupo'}</div>
       )}
     </div>
   )
-})
+}, soOData)
 
 export const nodeTypes: NodeTypes = {
   session: SessionNode,

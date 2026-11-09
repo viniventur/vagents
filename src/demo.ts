@@ -38,6 +38,8 @@ export function retratoDeExemplo(agora: number): Snapshot {
         startedAt: ha(48),
         updatedAt: ha(1),
         agents: [
+          agente('a0', 'Levantar os requisitos do Pix', 'general-purpose', 'done', ha(48), ha(47), 'Lista de requisitos pronta.'),
+          agente('a00', 'Ler o código do carrinho', 'Explore', 'done', ha(48), ha(46), 'O carrinho fecha o pedido em 2 passos.'),
           agente('a1', 'Mapear o checkout atual', 'Explore', 'done', ha(46), ha(41), 'Achei 3 telas e 2 rotas de pagamento.'),
           agente('a2', 'Ler a documentação do Pix', 'general-purpose', 'done', ha(45), ha(38), 'Resumo pronto: QR dinâmico e webhook.'),
           agente('a3', 'Comparar os gateways', 'general-purpose', 'done', ha(44), ha(30), 'Tabela com taxas e prazos.'),

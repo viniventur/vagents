@@ -1,4 +1,16 @@
-import { CornersOut, Desktop, GearSix, Moon, Plus, Sun } from '@phosphor-icons/react'
+import {
+  ArrowsInLineVertical,
+  ArrowsOutLineVertical,
+  CornersOut,
+  Desktop,
+  GearSix,
+  MagicWand,
+  Moon,
+  Plus,
+  Sun,
+  TreeStructure,
+  TreeView,
+} from '@phosphor-icons/react'
 import {
   Background,
   BackgroundVariant,
@@ -12,29 +24,60 @@ import {
   type Viewport,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import type { SessionStatus, SessionView } from '../shared/model.ts'
 import { Details, type AcoesDoPainel } from './Details.tsx'
 import { edgeTypes } from './FlowEdge.tsx'
-import { NowContext, useOrganizacao, usePreferencias, useRetrato, useStoredNumber, useTemaAplicado, useTicker } from './hooks.ts'
-import { SEM_GRUPO, areaNoPonto, buildGraph, sessionNodeId, type FlowNode, type Graph, type MoreNodeData } from './layout.ts'
+import {
+  NowContext,
+  useDobrasDaLista,
+  useOrganizacao,
+  usePreferencias,
+  useRetrato,
+  useStoredChoice,
+  useStoredNumber,
+  useTemaAplicado,
+  useTicker,
+} from './hooks.ts'
+import {
+  SEM_GRUPO,
+  areaNoPonto,
+  buildGraph,
+  deslocarSessao,
+  laneNodeId,
+  marcarAlvo,
+  sessionNodeId,
+  type FlowNode,
+  type Graph,
+  type MoreNodeData,
+} from './layout.ts'
 import { api, type Tema } from './lib/api.ts'
+import { TUDO_ABERTO, TUDO_FECHADO, abrirDobras, acaoDoTudo, alternarDobra, montarLista, type Lista } from './lib/lista.ts'
 import {
   alternarRecolhido,
   apagarGrupo,
+  corDaSessao,
   criarGrupo,
+  definirCorDaSessao,
+  definirCorDoGrupo,
   definirRegraDePasta,
   grupoDaSessao,
   moverGrupo,
   moverSessao,
   nomeDaSessao,
   novoIdDeGrupo,
+  posicionarSessoes,
   renomearGrupo,
   renomearSessao,
+  reorganizar,
+  temPosicoes,
 } from './lib/organizacao.ts'
 import { ContasDoClaude } from './ContasDoClaude.tsx'
 import { Credito } from './Credito.tsx'
+import { VistaEmLista, type Destaque } from './Lista.tsx'
 import { Marca } from './Marca.tsx'
-import { AcoesContext, nodeTypes, type Acoes } from './nodes.tsx'
+import { AcoesContext, nodeTypes, type Acoes, type AlvoDaCor } from './nodes.tsx'
+import { SeletorDeCor, type Ancora } from './SeletorDeCor.tsx'
 import { SESSION_STATUS } from './text.ts'
 
 const HORA = 3_600_000
@@ -53,6 +96,8 @@ const ORDEM: SessionStatus[] = ['waiting', 'running', 'idle', 'ended']
 const ENQUADRAMENTO = { padding: 0.06 }
 /** O alvo "criar um grupo novo" do arraste (a área que aparece na barra). */
 const NOVO_GRUPO = '__novo-grupo__'
+type Vista = 'mapa' | 'lista'
+const VISTAS: readonly Vista[] = ['mapa', 'lista']
 const TEMAS: { tema: Tema; rotulo: string; icone: ReactNode }[] = [
   { tema: 'claro', rotulo: 'Claro', icone: <Sun /> },
   { tema: 'escuro', rotulo: 'Escuro', icone: <Moon /> },
@@ -73,7 +118,27 @@ interface Arrastando {
   projeto: string
   x: number
   y: number
+  /** No mapa o próprio card anda com o ponteiro; na lista, um fantasma. */
+  noMapa: boolean
 }
+
+/** O canto do card arrastado no mapa, em coordenadas do canvas. */
+interface CardArrastado {
+  chave: string
+  x: number
+  y: number
+}
+
+/** O seletor de cor aberto: para quem, junto de que botão e se veio do teclado. */
+interface SeletorAberto {
+  alvo: AlvoDaCor
+  ancora: Ancora
+  botao: HTMLElement
+  peloTeclado: boolean
+}
+
+const mesmoAlvo = (a: AlvoDaCor, b: AlvoDaCor) =>
+  a.tipo === 'grupo' ? b.tipo === 'grupo' && a.id === b.id : b.tipo === 'sessao' && a.chave === b.chave
 
 function Tela() {
   const { retrato, noApp } = useRetrato()
@@ -81,14 +146,19 @@ function Tela() {
   const [prefs, definirPrefs] = usePreferencias()
   const temaAplicado = useTemaAplicado(prefs.tema)
   const now = useTicker(1000)
+  const [vista, setVista] = useStoredChoice<Vista>('vagents:vista', VISTAS, 'mapa')
+  const [dobras, mudarDobras] = useDobrasDaLista()
   const [expandidos, setExpandidos] = useState<ReadonlySet<string>>(() => new Set())
   const [janelaEncerradas, setJanelaEncerradas] = useStoredNumber('vagents:encerradas', 3 * HORA)
   const [selecionado, setSelecionado] = useState<string | null>(null)
   const [editandoGrupo, setEditandoGrupo] = useState<string | null>(null)
   const [arrastando, setArrastando] = useState<Arrastando | null>(null)
   const [alvo, setAlvo] = useState<string | null>(null)
+  const [cardArrastado, setCardArrastado] = useState<CardArrastado | null>(null)
   const [acompanhar, setAcompanhar] = useState(true)
   const [enquadrarSessao, setEnquadrarSessao] = useState<string | null>(null)
+  const [destaque, setDestaque] = useState<Destaque | null>(null)
+  const [seletor, setSeletor] = useState<SeletorAberto | null>(null)
   const [ajustes, setAjustes] = useState(false)
   const [contasAbertas, setContasAbertas] = useState(false)
   const inicioDoMovimento = useRef<Viewport | null>(null)
@@ -96,23 +166,40 @@ function Tela() {
   const ultimoArraste = useRef(0)
   const rf = useReactFlow()
 
-  const graph = useMemo<Graph | null>(
+  const noMapa = vista === 'mapa'
+  const graphBase = useMemo<Graph | null>(
     () =>
-      retrato
+      retrato && noMapa
         ? buildGraph(retrato, {
             expanded: expandidos,
             endedWindowMs: janelaEncerradas,
             selectedId: selecionado,
             organizacao: org,
             editandoGrupo,
-            alvo,
           })
         : null,
-    [retrato, expandidos, janelaEncerradas, selecionado, org, editandoGrupo, alvo],
+    [retrato, noMapa, expandidos, janelaEncerradas, selecionado, org, editandoGrupo],
   )
-  const graphRef = useRef(graph)
-  graphRef.current = graph
-  const selecao = selecionado ? graph?.lookup.get(selecionado) : undefined
+  // Durante o arraste, só o grupo sob o ponteiro acende e só o card arrastado muda de lugar: o resto do
+  // desenho são os mesmos objetos, e o React Flow não redesenha o que não mudou.
+  const graphComAlvo = useMemo(() => graphBase && marcarAlvo(graphBase, alvo), [graphBase, alvo])
+  const graph = useMemo(
+    () =>
+      graphComAlvo && cardArrastado ? deslocarSessao(graphComAlvo, cardArrastado.chave, cardArrastado.x, cardArrastado.y) : graphComAlvo,
+    [graphComAlvo, cardArrastado],
+  )
+  const graphRef = useRef(graphBase)
+  graphRef.current = graphBase
+  const lista = useMemo<Lista | null>(
+    () => (retrato && !noMapa ? montarLista(retrato, { endedWindowMs: janelaEncerradas, organizacao: org, abertos: expandidos }) : null),
+    [retrato, noMapa, janelaEncerradas, org, expandidos],
+  )
+  const sessoes = useMemo(() => graph?.sessions ?? lista?.sessoes ?? [], [graph, lista])
+  const selecao = selecionado ? (graph?.lookup ?? lista?.lookup)?.get(selecionado) : undefined
+  const vistaRef = useRef(vista)
+  vistaRef.current = vista
+  const orgRef = useRef(org)
+  orgRef.current = org
 
   // A janela nasce escondida: aparece quando a tela já tem o que mostrar.
   useEffect(() => {
@@ -156,13 +243,13 @@ function Tela() {
     const observador = new ResizeObserver(() => {
       cancelAnimationFrame(quadro)
       quadro = requestAnimationFrame(() => {
-        if (acompanharRef.current && el.clientWidth > 0 && el.clientHeight > 0) void rf.fitView({ padding: 0.06 })
+        if (vistaRef.current === 'mapa' && acompanharRef.current && el.clientWidth > 0 && el.clientHeight > 0) void rf.fitView({ padding: 0.06 })
       })
     })
     observador.observe(el)
     // A janela nasce escondida e aparece com o foco: aí o tamanho já é o final, então reenquadra.
     const aoMostrar = () => {
-      if (!document.hidden && acompanharRef.current) void rf.fitView({ padding: 0.06 })
+      if (!document.hidden && vistaRef.current === 'mapa' && acompanharRef.current) void rf.fitView({ padding: 0.06 })
     }
     document.addEventListener('visibilitychange', aoMostrar)
     window.addEventListener('focus', aoMostrar)
@@ -180,13 +267,20 @@ function Tela() {
     if (nosMedidos && acompanharRef.current) void rf.fitView({ padding: 0.06 })
   }, [nosMedidos, rf])
 
-  const enquadrar = useCallback(
-    (sessoes: SessionView[]) => {
-      if (sessoes.length === 0) return
+  /** Leva às sessões: no mapa, enquadra; na lista, abre o grupo delas, rola até lá e as faz piscar. */
+  const mostrar = useCallback(
+    (alvos: SessionView[]) => {
+      if (alvos.length === 0) return
+      if (vistaRef.current === 'lista') {
+        const o = orgRef.current
+        if (o.grupos.length > 0) mudarDobras((d) => abrirDobras(d, alvos.map((s) => laneNodeId(grupoDaSessao(o, s) ?? SEM_GRUPO))))
+        setDestaque((antes) => ({ chaves: alvos.map((s) => s.key), vez: (antes?.vez ?? 0) + 1 }))
+        return
+      }
       setAcompanhar(false)
-      void rf.fitView({ nodes: sessoes.map((s) => ({ id: sessionNodeId(s.key) })), padding: 0.15, duration: 450 })
+      void rf.fitView({ nodes: alvos.map((s) => ({ id: sessionNodeId(s.key) })), padding: 0.15, duration: 450 })
     },
-    [rf],
+    [rf, mudarDobras],
   )
 
   // O clique num popup de aviso abre a sessão dele: pelo evento (janela já aberta) ou pelo pedido
@@ -202,13 +296,13 @@ function Tela() {
     return () => void parar.then((f) => f())
   }, [noApp])
   useEffect(() => {
-    if (!sessaoPedida || !graph) return
-    const sessao = graph.sessions.find((s) => s.key === sessaoPedida)
+    if (!sessaoPedida) return
+    const sessao = sessoes.find((s) => s.key === sessaoPedida)
     if (!sessao) return
     setSessaoPedida(null)
     setSelecionado(sessionNodeId(sessao.key))
-    enquadrar([sessao])
-  }, [sessaoPedida, graph, enquadrar])
+    mostrar([sessao])
+  }, [sessaoPedida, sessoes, mostrar])
 
   const criarGrupoCom = useCallback(
     (sessao: SessionView | null) => {
@@ -223,50 +317,109 @@ function Tela() {
     [mudarOrg],
   )
 
-  /** Começa a arrastar uma sessão pelo cabeçalho; só vira arraste depois de 6 px (antes é clique). */
+  /** Grava onde o card caiu no mapa (veja o iniciarArraste). Só lê refs e o mudarOrg. */
+  const soltarNoMapa = useCallback(
+    (chave: string, daqui: string, destino: string, topo: { x: number; y: number }) => {
+      const g = graphRef.current
+      if (!g) return
+      const origem = g.origens.get(destino)
+      const mudouDeGrupo = destino !== daqui
+      mudarOrg((o) => {
+        const nova = mudouDeGrupo ? moverSessao(o, chave, destino === SEM_GRUPO ? null : destino) : o
+        // Grupo recolhido, ou um grupo que segue o automático: o card entra no fim dele, sem lugar marcado.
+        if (!origem || (mudouDeGrupo && !g.manuais.has(destino))) return nova
+        const comGrupos = o.grupos.length > 0
+        const relativo = (x: number, y: number) =>
+          comGrupos ? { x: Math.max(0, x - origem.x), y: Math.max(0, y - origem.y) } : { x: x - origem.x, y: y - origem.y }
+        const marca = destino === SEM_GRUPO ? '' : destino
+        // O grupo seguia o automático: os outros cards ficam onde estão, para nada pular de lugar.
+        const fixar = g.manuais.has(destino)
+          ? []
+          : [...g.caixas].filter(([k, c]) => c.grupo === destino && k !== chave).map(([k, c]) => ({ chave: k, ...relativo(c.x, c.y), grupo: marca }))
+        return posicionarSessoes(nova, [...fixar, { chave, ...relativo(topo.x, topo.y), grupo: marca }])
+      })
+    },
+    [mudarOrg],
+  )
+
+  /**
+   * Começa a arrastar uma sessão (pelo cabeçalho do card, ou pela linha na lista); só vira arraste depois
+   * de 6 px (antes é clique). No mapa, o card anda com o ponteiro: solto no grupo dele, fica onde você o
+   * deixou; num grupo arrumado à mão, entra onde caiu; num grupo automático, vai para o fim dele. Na lista
+   * (e na área "solte aqui", nas duas), só muda de grupo.
+   */
   const iniciarArraste = useCallback(
     (sessao: SessionView, nome: string, e: ReactPointerEvent) => {
       const x0 = e.clientX
       const y0 = e.clientY
+      const base = vistaRef.current === 'mapa' ? graphRef.current?.caixas.get(sessao.key) : undefined
+      const p0 = base ? rf.screenToFlowPosition({ x: x0, y: y0 }) : null
+      const daqui = base?.grupo ?? grupoDaSessao(orgRef.current, sessao) ?? SEM_GRUPO
       let ativo = false
-      let alvoAtual: string | null = null
+      /** O que está sob o ponteiro: um grupo, SEM_GRUPO, NOVO_GRUPO ou nada. */
+      let sob: string | null = null
+      let topo = base ? { x: base.x, y: base.y } : null
+      let quadro = 0
       const mover = (ev: PointerEvent) => {
         if (!ativo) {
           if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return
           ativo = true
-          setArrastando({ chave: sessao.key, nome, projeto: sessao.project, x: ev.clientX, y: ev.clientY })
+          // Arrastar não seleciona o texto por onde o ponteiro passa (nem o que os primeiros 6 px já pegaram).
+          window.getSelection()?.removeAllRanges()
+          document.documentElement.classList.add('arrastando')
+          setArrastando({ chave: sessao.key, nome, projeto: sessao.project, x: ev.clientX, y: ev.clientY, noMapa: base !== undefined })
         }
         if (fantasma.current) {
           fantasma.current.style.left = `${ev.clientX}px`
           fantasma.current.style.top = `${ev.clientY}px`
         }
-        const sob = document.elementFromPoint(ev.clientX, ev.clientY)
-        let novo: string | null
-        if (sob?.closest('[data-soltar-novo]')) novo = NOVO_GRUPO
+        const el = document.elementFromPoint(ev.clientX, ev.clientY)
+        let agora: string | null
+        if (el?.closest('[data-soltar-novo]')) agora = NOVO_GRUPO
+        else if (!base) agora = el?.closest<HTMLElement>('[data-alvo-grupo]')?.dataset.alvoGrupo ?? null
         else {
           const p = rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
-          novo = areaNoPonto(graphRef.current?.areas ?? [], p.x, p.y)
+          agora = areaNoPonto(graphRef.current?.areas ?? [], p.x, p.y)
         }
-        if (novo !== alvoAtual) {
-          alvoAtual = novo
-          setAlvo(novo)
+        if (agora !== sob) {
+          sob = agora
+          // O grupo de onde a sessão saiu não acende: mexer dentro dele é só mudar o card de lugar.
+          setAlvo(agora === daqui ? null : agora)
+        }
+        if (base && p0) {
+          const p = rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+          const novo = { x: base.x + p.x - p0.x, y: base.y + p.y - p0.y }
+          topo = novo
+          cancelAnimationFrame(quadro)
+          // Desenha ainda neste quadro: sem o flushSync, o React só atualizaria a tela depois da pintura,
+          // e o card andaria um quadro atrás do ponteiro.
+          quadro = requestAnimationFrame(() => flushSync(() => setCardArrastado({ chave: sessao.key, ...novo })))
         }
       }
       const terminar = (soltou: boolean) => {
         window.removeEventListener('pointermove', mover)
         window.removeEventListener('pointerup', aoSoltar)
         window.removeEventListener('keydown', aoTeclar)
+        cancelAnimationFrame(quadro)
+        document.documentElement.classList.remove('arrastando')
         setArrastando(null)
         setAlvo(null)
+        setCardArrastado(null)
         if (!ativo) return
         ultimoArraste.current = Date.now()
-        if (!soltou || alvoAtual === null) return
-        if (alvoAtual === NOVO_GRUPO) {
+        if (!soltou) return
+        if (sob === NOVO_GRUPO) {
           criarGrupoCom(sessao)
           return
         }
-        const destino = alvoAtual === SEM_GRUPO ? null : alvoAtual
-        mudarOrg((o) => (grupoDaSessao(o, sessao) === destino ? o : moverSessao(o, sessao.key, destino)))
+        if (!base || !topo) {
+          const destino = sob
+          if (destino !== null && destino !== daqui) mudarOrg((o) => moverSessao(o, sessao.key, destino === SEM_GRUPO ? null : destino))
+          return
+        }
+        // Você arrumou o mapa à mão: a tela para de se reenquadrar sozinha ("Enquadrar tudo" volta).
+        setAcompanhar(false)
+        soltarNoMapa(sessao.key, daqui, sob ?? daqui, topo)
       }
       const aoSoltar = () => terminar(true)
       const aoTeclar = (ev: KeyboardEvent) => {
@@ -276,7 +429,18 @@ function Tela() {
       window.addEventListener('pointerup', aoSoltar)
       window.addEventListener('keydown', aoTeclar)
     },
-    [rf, criarGrupoCom, mudarOrg],
+    [rf, criarGrupoCom, mudarOrg, soltarNoMapa],
+  )
+
+  /** Abre o seletor de cor junto do botão (ou fecha, se já estava aberto para o mesmo grupo ou card). */
+  const escolherCor = useCallback((alvo: AlvoDaCor, botao: HTMLElement, peloTeclado: boolean) => {
+    const r = botao.getBoundingClientRect()
+    setSeletor((aberto) => (aberto && mesmoAlvo(aberto.alvo, alvo) ? null : { alvo, ancora: { x: r.x, y: r.y, w: r.width, h: r.height }, botao, peloTeclado }))
+  }, [])
+  const mudarCor = useCallback(
+    (alvo: AlvoDaCor, cor: string | null) =>
+      mudarOrg((o) => (alvo.tipo === 'grupo' ? definirCorDoGrupo(o, alvo.id, cor) : definirCorDaSessao(o, alvo.chave, cor))),
+    [mudarOrg],
   )
 
   const acoes = useMemo<Acoes>(
@@ -288,8 +452,9 @@ function Tela() {
       recolherGrupo: (id) => mudarOrg((o) => alternarRecolhido(o, id)),
       moverGrupo: (id, direcao) => mudarOrg((o) => moverGrupo(o, id, direcao)),
       apagarGrupo: (id) => mudarOrg((o) => apagarGrupo(o, id)),
+      escolherCor,
     }),
-    [iniciarArraste, mudarOrg],
+    [iniciarArraste, mudarOrg, escolherCor],
   )
 
   const acoesDoPainel = useMemo<AcoesDoPainel>(
@@ -298,9 +463,28 @@ function Tela() {
       moverSessao: (chave, grupo) => mudarOrg((o) => moverSessao(o, chave, grupo)),
       criarGrupoCom,
       definirRegra: (pasta, grupo) => mudarOrg((o) => definirRegraDePasta(o, pasta, grupo)),
+      escolherCor,
+      definirCorDaSessao: (chave, cor) => mudarCor({ tipo: 'sessao', chave }, cor),
     }),
-    [mudarOrg, criarGrupoCom],
+    [mudarOrg, criarGrupoCom, escolherCor, mudarCor],
   )
+
+  // O que o seletor de cor mostra: o nome e a cor de agora do grupo ou do card. Se o grupo foi apagado,
+  // ou a sessão saiu da tela, ou você trocou de vista, ele fecha.
+  const noSeletor = useMemo(() => {
+    if (!seletor) return null
+    const a = seletor.alvo
+    if (a.tipo === 'grupo') {
+      const g = org.grupos.find((x) => x.id === a.id)
+      return g ? { titulo: `Cor do grupo “${g.nome}”`, cor: g.cor ?? null } : null
+    }
+    const s = sessoes.find((x) => x.key === a.chave)
+    return s ? { titulo: `Cor do card “${nomeDaSessao(org, s)}”`, cor: corDaSessao(org, a.chave) } : null
+  }, [seletor, org, sessoes])
+  useEffect(() => {
+    if (seletor && !noSeletor) setSeletor(null)
+  }, [seletor, noSeletor])
+  useEffect(() => setSeletor(null), [vista])
 
   // O clique abre o painel só depois de 220 ms: se vier o segundo clique (renomear), o painel não abre
   // por cima do título.
@@ -311,25 +495,44 @@ function Tela() {
     return () => window.removeEventListener('dblclick', cancelar, true)
   }, [])
 
-  const aoClicarNo = useCallback((_: unknown, node: Node) => {
-    if (Date.now() - ultimoArraste.current < 250) return
-    const n = node as FlowNode
-    if (n.type === 'lane') return
-    if (n.type === 'more') {
-      const { groupKey, sessionKey } = n.data as MoreNodeData
-      setExpandidos((antes) => {
-        const depois = new Set(antes)
-        if (depois.has(groupKey)) depois.delete(groupKey)
-        else depois.add(groupKey)
-        return depois
-      })
-      setAcompanhar(false)
-      setEnquadrarSessao(sessionKey)
-      return
-    }
-    clearTimeout(selecaoPendente.current)
-    selecaoPendente.current = setTimeout(() => setSelecionado((antes) => (antes === n.id ? null : n.id)), 220)
+  /** Abre ou fecha um "+N" (os subagentes antigos de um pai); vale para o mapa e para a lista. */
+  const alternarMais = useCallback((chave: string) => {
+    setExpandidos((antes) => {
+      const depois = new Set(antes)
+      if (depois.has(chave)) depois.delete(chave)
+      else depois.add(chave)
+      return depois
+    })
   }, [])
+
+  /** O clique que seleciona: espera o tempo de um duplo clique (renomear) antes de abrir o painel. */
+  const clicarParaSelecionar = useCallback((id: string) => {
+    if (Date.now() - ultimoArraste.current < 250) return
+    clearTimeout(selecaoPendente.current)
+    selecaoPendente.current = setTimeout(() => setSelecionado((antes) => (antes === id ? null : id)), 220)
+  }, [])
+
+  const aoClicarNo = useCallback(
+    (_: unknown, node: Node) => {
+      if (Date.now() - ultimoArraste.current < 250) return
+      const n = node as FlowNode
+      if (n.type === 'lane') return
+      if (n.type === 'more') {
+        const { groupKey, sessionKey } = n.data as MoreNodeData
+        alternarMais(groupKey)
+        setAcompanhar(false)
+        setEnquadrarSessao(sessionKey)
+        return
+      }
+      clicarParaSelecionar(n.id)
+    },
+    [alternarMais, clicarParaSelecionar],
+  )
+
+  const alternarNaLista = useCallback((id: string) => mudarDobras((d) => alternarDobra(d, id)), [mudarDobras])
+  const escolherNaLista = useCallback((id: string) => setSelecionado((antes) => (antes === id ? null : id)), [])
+  const acaoDaLista = lista ? acaoDoTudo(lista, dobras) : null
+  const arrumadoAMao = temPosicoes(org)
 
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
@@ -343,8 +546,9 @@ function Tela() {
   }, [])
 
   const contagem = { waiting: 0, running: 0, idle: 0, ended: 0 } as Record<SessionStatus, number>
-  for (const s of graph?.sessions ?? []) contagem[s.status]++
-  const esperando = graph?.sessions.filter((s) => s.status === 'waiting') ?? []
+  for (const s of sessoes) contagem[s.status]++
+  const esperando = sessoes.filter((s) => s.status === 'waiting')
+  const temConteudo = noMapa ? (graph?.nodes.length ?? 0) > 0 : lista !== null && (lista.sessoes.length > 0 || lista.temGrupos)
 
   return (
     <NowContext.Provider value={now}>
@@ -362,8 +566,8 @@ function Tela() {
                 type="button"
                 className={`contador is-${status}`}
                 disabled={contagem[status] === 0}
-                onClick={() => enquadrar(graph?.sessions.filter((s) => s.status === status) ?? [])}
-                title={contagem[status] ? 'Enquadrar essas sessões' : undefined}
+                onClick={() => mostrar(sessoes.filter((s) => s.status === status))}
+                title={contagem[status] ? (noMapa ? 'Enquadrar essas sessões' : 'Mostrar essas sessões') : undefined}
               >
                 <span className="ponto" aria-hidden />
                 <span className="contador-n">{contagem[status]}</span>
@@ -379,7 +583,7 @@ function Tela() {
                   key={s.key}
                   type="button"
                   className="tag tag-magenta esperando-item"
-                  onClick={() => enquadrar([s])}
+                  onClick={() => mostrar([s])}
                   title={s.lastPrompt}
                 >
                   {nomeDaSessao(org, s)}
@@ -388,10 +592,73 @@ function Tela() {
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <div className="seg" role="group" aria-label="Visualização">
+              <button
+                type="button"
+                className="seg-opcao"
+                aria-pressed={noMapa}
+                onClick={() => setVista('mapa')}
+                title="As sessões num mapa, com a árvore dos agentes"
+              >
+                <TreeStructure /> Mapa
+              </button>
+              <button
+                type="button"
+                className="seg-opcao"
+                aria-pressed={!noMapa}
+                onClick={() => setVista('lista')}
+                title="As sessões numa lista, com a árvore dos agentes"
+              >
+                <TreeView /> Lista
+              </button>
+            </div>
             <button type="button" className="btn btn-secundario btn-pequeno" onClick={() => criarGrupoCom(null)}>
               <Plus /> Novo grupo
             </button>
+            {noMapa ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-secundario btn-pequeno"
+                  disabled={!arrumadoAMao}
+                  onClick={() => {
+                    mudarOrg(reorganizar)
+                    setAcompanhar(true)
+                  }}
+                  title={
+                    arrumadoAMao
+                      ? 'Volta todos os cards para a organização automática'
+                      : 'Os cards já estão na organização automática. Arraste um card pelo cabeçalho para mudá-lo de lugar.'
+                  }
+                >
+                  <MagicWand /> Reorganizar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-icone"
+                  aria-label="Enquadrar tudo"
+                  title="Enquadrar tudo"
+                  onClick={() => {
+                    setAcompanhar(true)
+                    void rf.fitView({ padding: 0.06, duration: 300 })
+                  }}
+                >
+                  <CornersOut />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-secundario btn-pequeno"
+                disabled={acaoDaLista === null}
+                onClick={() => mudarDobras(() => (acaoDaLista === 'expandir' ? TUDO_ABERTO : TUDO_FECHADO))}
+                title={acaoDaLista === 'expandir' ? 'Abre os grupos, as sessões e os agentes' : 'Fecha os grupos, as sessões e os agentes'}
+              >
+                {acaoDaLista === 'expandir' ? <ArrowsOutLineVertical /> : <ArrowsInLineVertical />}
+                {acaoDaLista === 'expandir' ? 'Expandir tudo' : 'Recolher tudo'}
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-icone btn-secundario"
@@ -400,18 +667,6 @@ function Tela() {
               onClick={() => definirPrefs({ ...prefs, tema: temaAplicado === 'escuro' ? 'claro' : 'escuro' })}
             >
               {temaAplicado === 'escuro' ? <Moon /> : <Sun />}
-            </button>
-            <button
-              type="button"
-              className="btn btn-icone"
-              aria-label="Enquadrar tudo"
-              title="Enquadrar tudo"
-              onClick={() => {
-                setAcompanhar(true)
-                void rf.fitView({ padding: 0.06, duration: 300 })
-              }}
-            >
-              <CornersOut />
             </button>
             <Ajustes
               aberto={ajustes}
@@ -441,8 +696,9 @@ function Tela() {
               Solte aqui para criar um grupo com ela
             </div>
           )}
-          {graph && graph.nodes.length > 0 ? (
+          {temConteudo ? (
             <AcoesContext.Provider value={acoes}>
+              {graph && noMapa ? (
               <ReactFlow
                 nodes={graph.nodes}
                 edges={graph.edges}
@@ -474,8 +730,23 @@ function Tela() {
               >
                 <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} />
                 <Controls showInteractive={false} position="bottom-left" />
-                <MiniMap pannable zoomable position="bottom-right" nodeClassName={classeNoMinimapa} />
+                <MiniMap pannable zoomable position="bottom-right" nodeClassName={classeNoMinimapa} nodeColor={corNoMinimapa} />
               </ReactFlow>
+              ) : lista ? (
+                <VistaEmLista
+                  lista={lista}
+                  dobras={dobras}
+                  selecionado={selecionado}
+                  alvo={alvo}
+                  editandoGrupo={editandoGrupo}
+                  destaque={destaque}
+                  comPainel={selecao !== undefined}
+                  aoAlternar={alternarNaLista}
+                  aoAlternarMais={alternarMais}
+                  aoClicar={clicarParaSelecionar}
+                  aoEscolher={escolherNaLista}
+                />
+              ) : null}
             </AcoesContext.Provider>
           ) : (
             <Vazio noApp={noApp} carregado={retrato !== null} pastas={retrato?.configDirs ?? []} />
@@ -494,7 +765,20 @@ function Tela() {
 
       {contasAbertas && <ContasDoClaude aoFechar={() => setContasAbertas(false)} />}
 
-      {arrastando && (
+      {seletor && noSeletor && (
+        <SeletorDeCor
+          key={seletor.alvo.tipo === 'grupo' ? `g:${seletor.alvo.id}` : `s:${seletor.alvo.chave}`}
+          titulo={noSeletor.titulo}
+          cor={noSeletor.cor}
+          ancora={seletor.ancora}
+          botao={seletor.botao}
+          peloTeclado={seletor.peloTeclado}
+          aoMudar={(cor) => mudarCor(seletor.alvo, cor)}
+          aoFechar={() => setSeletor(null)}
+        />
+      )}
+
+      {arrastando && !arrastando.noMapa && (
         <div ref={fantasma} className="fantasma" style={{ left: arrastando.x, top: arrastando.y }}>
           {arrastando.nome}
           <small>{arrastando.projeto} · solte num grupo</small>
@@ -594,6 +878,14 @@ function Ajustes(props: {
       )}
     </div>
   )
+}
+
+/** No minimapa, o grupo e o card com cor escolhida aparecem com ela (os outros ficam com a do CSS). */
+function corNoMinimapa(node: Node): string {
+  const n = node as FlowNode
+  if (n.type === 'lane' && n.data.grupo?.cor) return `color-mix(in oklab, ${n.data.grupo.cor} 22%, var(--faixa))`
+  if (n.type === 'session' && n.data.cor) return `color-mix(in oklab, ${n.data.cor} 30%, var(--sessao))`
+  return ''
 }
 
 function classeNoMinimapa(node: Node): string {

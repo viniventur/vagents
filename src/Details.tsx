@@ -3,8 +3,8 @@ import { useContext, useState, type ReactNode } from 'react'
 import type { AgentView, SessionView } from '../shared/model.ts'
 import { NowContext } from './hooks.ts'
 import { countAgents, type Selection } from './layout.ts'
-import { grupoDaSessao, nomeDaSessao, regraDaPasta, type Organizacao } from './lib/organizacao.ts'
-import { Selo, TextoEditavel } from './nodes.tsx'
+import { corDaSessao, grupoDaSessao, nomeDaSessao, regraDaPasta, type Organizacao } from './lib/organizacao.ts'
+import { BotaoDeCor, Selo, TextoEditavel, type Acoes } from './nodes.tsx'
 import { AGENT_STATUS, clock, duration, modelLabel, plural, relTime, resumeCommand, waitingReason } from './text.ts'
 
 const NOVO_GRUPO = '__novo__'
@@ -15,6 +15,8 @@ export interface AcoesDoPainel {
   moverSessao: (chave: string, grupo: string | null) => void
   criarGrupoCom: (sessao: SessionView) => void
   definirRegra: (pasta: string, grupo: string | null) => void
+  escolherCor: Acoes['escolherCor']
+  definirCorDaSessao: (chave: string, cor: string | null) => void
 }
 
 interface Props {
@@ -50,6 +52,7 @@ function DetalhesDaSessao({ sessao: s, org, acoes }: { sessao: SessionView; org:
   const grupo = grupoDaSessao(org, s)
   const regra = regraDaPasta(org, s.cwd)
   const regraAqui = grupo !== null && regra?.grupo === grupo
+  const cor = corDaSessao(org, s.key)
 
   return (
     <>
@@ -111,6 +114,24 @@ function DetalhesDaSessao({ sessao: s, org, acoes }: { sessao: SessionView; org:
             </span>
           </label>
         )}
+      </Secao>
+
+      <Secao titulo="Cor do card">
+        <div className="flex items-center gap-2.5 text-[13.5px]">
+          <BotaoDeCor
+            cor={cor}
+            rotulo="Cor do card"
+            className="cor-botao-grande"
+            aoClicar={(botao, peloTeclado) => acoes.escolherCor({ tipo: 'sessao', chave: s.key }, botao, peloTeclado)}
+          />
+          {cor ? <span className="codigo">{cor}</span> : <span className="text-neutro-600">A de sempre</span>}
+          {cor && (
+            <button type="button" className="btn btn-fantasma btn-pequeno ml-auto" onClick={() => acoes.definirCorDaSessao(s.key, null)}>
+              Usar o padrão
+            </button>
+          )}
+        </div>
+        <p className="mt-1.5 text-[12.5px] text-neutro-600">A faixa no alto do card continua mostrando o estado da sessão.</p>
       </Secao>
 
       <Secao titulo="Seu último pedido">

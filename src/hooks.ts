@@ -3,6 +3,7 @@ import type { Snapshot } from '../shared/model.ts'
 import { api, dentroDoApp, type Preferencias } from './lib/api.ts'
 import { organizacaoDeExemplo, retratoDeExemplo } from './demo.ts'
 import { aplicarTema, resolverTema, type TemaAplicado } from './lib/aparencia.ts'
+import { TUDO_ABERTO, type Dobras } from './lib/lista.ts'
 import { VAZIA, normalizar, type Organizacao } from './lib/organizacao.ts'
 
 /**
@@ -136,4 +137,61 @@ export function useStoredNumber(key: string, initial: number): [number, (value: 
     }
   }
   return [value, update]
+}
+
+/** Uma escolha guardada no navegador do app, entre os valores aceitos (a tela funciona sem ela). */
+export function useStoredChoice<T extends string>(key: string, valores: readonly T[], initial: T): [T, (value: T) => void] {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(key)
+      return valores.includes(raw as T) ? (raw as T) : initial
+    } catch {
+      return initial
+    }
+  })
+  const update = useCallback(
+    (next: T) => {
+      setValue(next)
+      try {
+        localStorage.setItem(key, next)
+      } catch {
+        // sem armazenamento: vale só até fechar
+      }
+    },
+    [key],
+  )
+  return [value, update]
+}
+
+const CHAVE_DAS_DOBRAS = 'vagents:lista-dobras'
+
+/** O que está recolhido na lista, guardado no navegador do app (as exceções mais recentes, até 400). */
+export function useDobrasDaLista(): [Dobras, (mudar: (d: Dobras) => Dobras) => void] {
+  const [dobras, setDobras] = useState<Dobras>(() => {
+    try {
+      const bruto = JSON.parse(localStorage.getItem(CHAVE_DAS_DOBRAS) ?? 'null') as { fechadoPorPadrao?: unknown; invertidos?: unknown } | null
+      if (bruto && typeof bruto.fechadoPorPadrao === 'boolean' && Array.isArray(bruto.invertidos)) {
+        const invertidos = bruto.invertidos.filter((x): x is string => typeof x === 'string')
+        return { fechadoPorPadrao: bruto.fechadoPorPadrao, invertidos: new Set(invertidos) }
+      }
+    } catch {
+      // sem armazenamento, ou guardado num formato velho: começa tudo aberto
+    }
+    return TUDO_ABERTO
+  })
+  const mudar = useCallback((f: (d: Dobras) => Dobras) => {
+    setDobras((atual) => {
+      const nova = f(atual)
+      if (nova !== atual) {
+        try {
+          const invertidos = [...nova.invertidos].slice(-400)
+          localStorage.setItem(CHAVE_DAS_DOBRAS, JSON.stringify({ fechadoPorPadrao: nova.fechadoPorPadrao, invertidos }))
+        } catch {
+          // sem armazenamento: vale só até fechar
+        }
+      }
+      return nova
+    })
+  }, [])
+  return [dobras, mudar]
 }

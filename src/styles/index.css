@@ -73,6 +73,12 @@
   --cartao: var(--color-branco);
   --pontilhado: color-mix(in srgb, var(--color-texto) 14%, transparent);
 
+  /* Quanto da cor que você escolhe entra no quadro do grupo, no card e na linha da lista: um tom, para o
+     texto continuar legível com qualquer cor. */
+  --tom-faixa: 13%;
+  --tom-cartao: 18%;
+  --tom-linha: 13%;
+
   color-scheme: light;
 }
 
@@ -124,6 +130,10 @@
   --sessao: #252321;
   --cartao: #2f2c2a;
   --pontilhado: color-mix(in srgb, var(--color-texto) 10%, transparent);
+
+  --tom-faixa: 15%;
+  --tom-cartao: 22%;
+  --tom-linha: 16%;
 
   color-scheme: dark;
 }
@@ -542,8 +552,26 @@ body,
   font-family: var(--font-serifa);
 }
 
+/* Quando o desenho muda (sessão nova, card que cresce, "Reorganizar"), os cards deslizam até o lugar
+   novo e as ligações fazem o mesmo caminho, no mesmo tempo: continuam presas aos cards. */
 .react-flow__node {
   transition: transform 260ms ease;
+}
+.react-flow__edge-path.ligacao {
+  transition: d 260ms ease;
+  /* A ligação nova (de um subagente que acabou de nascer) não tem de onde deslizar: aparece aos poucos
+     enquanto os cards em volta abrem espaço. */
+  animation: ligacao-nasce 260ms ease;
+}
+@keyframes ligacao-nasce {
+  from {
+    opacity: 0;
+  }
+}
+/* O card que você arrasta, e as ligações dele, seguem o ponteiro na hora, sem transição. */
+.react-flow__node.is-arrastando,
+.react-flow__edge.is-arrastando .ligacao {
+  transition: none;
 }
 
 .react-flow__handle {
@@ -595,6 +623,12 @@ body,
   background: transparent;
   border-style: dashed;
 }
+/* A cor que você escolheu para o grupo: um tom dela no quadro, e a borda. (O grupo-alvo do arraste, logo
+   abaixo, vem por cima.) */
+.faixa.tem-cor {
+  background: color-mix(in oklab, var(--cor-grupo) var(--tom-faixa), var(--faixa));
+  border-color: color-mix(in oklab, var(--cor-grupo) 55%, var(--faixa));
+}
 .faixa.is-alvo {
   border: 2px dashed var(--color-ciano);
   background: color-mix(in srgb, var(--color-ciano) 8%, var(--faixa));
@@ -620,6 +654,11 @@ body,
   color: var(--color-neutro-600);
   font-style: italic;
   cursor: default;
+}
+.faixa-total {
+  font-size: 13px;
+  color: var(--color-neutro-600);
+  white-space: nowrap;
 }
 .faixa-acoes {
   margin-left: auto;
@@ -670,6 +709,10 @@ body,
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: var(--c);
 }
+/* A cor que você escolheu para o card pinta o fundo dele; a faixa do estado, no alto, continua a de sempre. */
+.sessao.tem-cor {
+  background: color-mix(in oklab, var(--cor-cartao) var(--tom-cartao), var(--sessao));
+}
 .sessao.is-waiting {
   animation: espera 2.2s ease-in-out infinite;
 }
@@ -688,6 +731,16 @@ body,
 .sessao.is-selected {
   outline: 2px solid var(--color-ciano);
   outline-offset: 3px;
+}
+/* O card que você está arrastando: por cima de tudo, com a sombra de "levantado". Opaco mesmo se a sessão
+   já encerrou (o apagado dela deixaria ver os cards de baixo através dele). */
+.react-flow__node.is-arrastando .sessao {
+  animation: none;
+  box-shadow: var(--sombra-lg);
+  opacity: 1;
+}
+.react-flow__node.is-arrastando .sessao-cabeca {
+  cursor: grabbing;
 }
 
 .sessao-cabeca {
@@ -900,6 +953,180 @@ body,
 .fluxo-pulso circle {
   fill: var(--c-rodando);
 }
+/* O pulso nasce escondido e aparece quando a ligação termina de deslizar (260 ms): antes disso ele
+   correria pelo caminho final, longe da linha, e no primeiro quadro ficaria parado no canto do canvas. */
+.fluxo-pulso {
+  animation: pulso-espera 320ms linear;
+}
+@keyframes pulso-espera {
+  0%,
+  80% {
+    opacity: 0;
+  }
+}
+
+/* ---------- A cor dos grupos e dos cards ---------- */
+
+/* O quadradinho que mostra a cor e abre o seletor: cheio com a cor escolhida, ou tracejado (a de sempre). */
+.cor-botao {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-neutro-500);
+  background: transparent;
+  cursor: pointer;
+}
+.cor-botao.tem-cor {
+  border: 1px solid color-mix(in oklab, var(--cor) 65%, var(--color-texto));
+  background: var(--cor);
+}
+.cor-botao:hover {
+  outline: 2px solid color-mix(in srgb, var(--color-texto) 22%, transparent);
+  outline-offset: 1px;
+}
+.cor-botao:focus-visible {
+  outline: 2px solid var(--color-ciano);
+  outline-offset: 2px;
+}
+/* No card do mapa, só aparece quando o mouse passa por ele (ou com o foco do teclado). */
+.cor-botao-cartao {
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.sessao:hover .cor-botao-cartao,
+.cor-botao-cartao:focus-visible {
+  opacity: 1;
+}
+/* Na lista, antes do nome: à mostra se o card tem cor; senão, só com o mouse na linha. */
+.cor-botao-linha {
+  width: 13px;
+  height: 13px;
+  align-self: center;
+}
+.cor-botao-linha.is-padrao {
+  opacity: 0;
+}
+.linha:hover .cor-botao-linha.is-padrao,
+.linha:focus-within .cor-botao-linha.is-padrao {
+  opacity: 1;
+}
+.cor-botao-grande {
+  width: 28px;
+  height: 28px;
+}
+
+/* O seletor ("quadro cromático"): solto na tela, no tamanho de sempre, mesmo com o mapa afastado. */
+.seletor-cor {
+  position: fixed;
+  z-index: 70;
+  width: 256px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: var(--cartao);
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+  font-size: 13px;
+}
+.seletor-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.seletor-titulo {
+  flex: 1;
+  min-width: 0;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seletor-amostra {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-divisor);
+}
+.seletor-amostra.is-padrao {
+  background: repeating-linear-gradient(135deg, var(--faixa) 0 5px, var(--sessao) 5px 10px);
+}
+.seletor-area {
+  position: relative;
+  height: 150px;
+  border-radius: var(--radius-md);
+  background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
+  cursor: crosshair;
+  touch-action: none;
+}
+.seletor-matiz {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00);
+  cursor: pointer;
+  touch-action: none;
+}
+.seletor-area:focus-visible,
+.seletor-matiz:focus-visible {
+  outline: 2px solid var(--color-ciano);
+  outline-offset: 2px;
+}
+.seletor-alvo {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 1px 3px rgb(0 0 0 / 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.seletor-hex {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.seletor-hex > span {
+  color: var(--color-neutro-600);
+  font-size: 12px;
+}
+.seletor-hex .campo {
+  min-height: 30px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.seletor-prontas {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+.seletor-pronta {
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-texto) 18%, transparent);
+  background: var(--cor);
+  cursor: pointer;
+}
+.seletor-pronta.is-escolhida,
+.seletor-pronta:focus-visible {
+  outline: 2px solid var(--color-texto);
+  outline-offset: 2px;
+}
+.seletor-pe {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
 
 /* ---------- O painel de detalhes ---------- */
 
@@ -976,6 +1203,13 @@ body,
 
 /* ---------- O arraste ---------- */
 
+/* Enquanto uma sessão é arrastada: nada de selecionar texto, e a mão fechada em qualquer lugar. */
+:root.arrastando,
+:root.arrastando * {
+  user-select: none;
+  cursor: grabbing !important;
+}
+
 .fantasma {
   position: fixed;
   z-index: 50;
@@ -1000,6 +1234,399 @@ body,
   color: var(--color-neutro-700);
 }
 
+/* ---------- A lista ---------- */
+
+.lista-area {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+}
+/* Com o painel de detalhes aberto, a lista abre espaço para ele (se a janela for larga). */
+@media (min-width: 1040px) {
+  .lista-area.com-painel {
+    right: 434px;
+  }
+}
+.lista {
+  --colunas: minmax(0, 1.35fr) minmax(0, 0.5fr) 150px minmax(0, 1fr) 120px;
+  height: 100%;
+  overflow: auto;
+  padding: 0 18px 28px;
+  scroll-padding-top: 52px;
+}
+
+.lista-colunas {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: var(--colunas);
+  gap: 16px;
+  padding: 14px 13px 8px;
+  background: var(--color-fundo);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutro-600);
+  white-space: nowrap;
+}
+/* "Sessão" alinhado com o nome (depois da alça e da seta). */
+.lista-colunas > :first-child {
+  padding-left: 46px;
+}
+
+.lista-secao {
+  background: var(--faixa);
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+}
+.lista-secao.is-sem-grupo {
+  background: transparent;
+  border-style: dashed;
+}
+.lista-secao.tem-cor {
+  background: color-mix(in oklab, var(--cor-grupo) var(--tom-faixa), var(--faixa));
+  border-color: color-mix(in oklab, var(--cor-grupo) 55%, var(--faixa));
+}
+.lista-secao.is-alvo {
+  outline: 2px dashed var(--color-ciano);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--color-ciano) 8%, var(--faixa));
+}
+.lista-secao > .faixa-cabeca {
+  height: 52px;
+  padding: 0 10px 0 8px;
+  gap: 10px;
+}
+.lista-secao .faixa-nome {
+  font-size: 18px;
+}
+.lista-secao.is-sem-grupo .faixa-nome {
+  color: var(--color-neutro-600);
+  font-style: italic;
+  cursor: default;
+}
+.lista-secao > .faixa-cabeca + .lista-linhas {
+  border-top: 1px solid var(--color-divisor);
+}
+.lista-vazia {
+  margin: 0 12px 12px;
+  height: 52px;
+  display: grid;
+  place-content: center;
+  border: 1.5px dashed var(--color-divisor);
+  border-radius: var(--radius-lg);
+  color: var(--color-neutro-600);
+  font-size: 13.5px;
+  font-style: italic;
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: var(--colunas);
+  gap: 16px;
+  align-items: stretch;
+  padding: 0 12px;
+  min-height: 38px;
+  font-size: 13.5px;
+  cursor: pointer;
+  outline-offset: -2px;
+}
+.linha > * {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.linha:hover {
+  background: color-mix(in srgb, var(--color-texto) 4%, transparent);
+}
+.linha.is-selecionada,
+.linha.is-selecionada:hover {
+  background: color-mix(in srgb, var(--color-ciano) 14%, transparent);
+}
+.lista-linhas > .linha:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.lista-secao.is-unica .lista-linhas > .linha:first-child {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.linha-sessao {
+  min-height: 64px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  box-shadow: inset 3px 0 0 var(--c);
+}
+/* A cor do card, na lista: um tom por cima do fundo (o do passar o mouse e o da seleção continuam por
+   baixo) e por baixo da faixa do estado, à esquerda. */
+.linha-sessao.tem-cor {
+  box-shadow:
+    inset 3px 0 0 var(--c),
+    inset 0 0 0 999px color-mix(in oklab, var(--cor-cartao) var(--tom-linha), transparent);
+}
+.linha-sessao:not(:first-child) {
+  border-top: 1px solid var(--color-divisor);
+}
+.linha-sessao.is-waiting {
+  background: color-mix(in srgb, var(--c-esperando) 7%, transparent);
+}
+.linha-sessao.is-ended > * {
+  opacity: 0.62;
+}
+
+.linha-alca {
+  width: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--color-neutro-500);
+  opacity: 0;
+  cursor: grab;
+}
+.linha-sessao:hover .linha-alca {
+  opacity: 1;
+}
+/* O recuo de um nível, com a linha-guia no meio da seta do pai. */
+.linha-guia {
+  width: 22px;
+  flex: none;
+  align-self: stretch;
+  position: relative;
+}
+.linha-guia::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--color-texto) 16%, transparent);
+}
+.linha-seta {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin-right: 6px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-neutro-600);
+  font-size: 12px;
+}
+.linha-seta.is-botao:hover {
+  background: color-mix(in srgb, var(--color-texto) 9%, transparent);
+  color: var(--color-texto);
+}
+
+.linha-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  font-size: 15.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.linha-titulo > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.linha-titulo .editar-nome {
+  font-size: 15px;
+}
+.linha-resumo {
+  flex: none;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-neutro-600);
+}
+.linha-desc {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-neutro-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.linha-desc.is-vazia {
+  font-style: italic;
+  color: var(--color-neutro-500);
+}
+/* O projeto junto do nome, para quando a coluna "Projeto" não cabe. */
+.linha-projeto-junto {
+  display: none;
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-neutro-600);
+}
+
+.linha > .linha-projeto {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+}
+.linha-projeto-nome {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linha-rotulos {
+  display: flex;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.linha-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--color-neutro-700);
+  white-space: nowrap;
+}
+
+.linha > .linha-agora {
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-neutro-700);
+}
+.linha-agora-texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linha-sessao .linha-agora-texto {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.35;
+}
+.linha-agora.is-forte {
+  color: var(--c-esperando);
+  font-weight: 650;
+}
+.linha-modelo {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-neutro-600);
+}
+.linha > .linha-tempo {
+  justify-content: flex-end;
+  font-size: 12.5px;
+  color: var(--color-neutro-600);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.linha-agente {
+  min-height: 36px;
+}
+.linha-tipo {
+  flex: none;
+  max-width: 170px;
+  margin-right: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-neutro-700);
+}
+.linha-agente-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.linha-agente .linha-resumo {
+  margin-left: 10px;
+}
+.linha-agente.is-done .linha-agente-desc,
+.linha-agente.is-interrupted .linha-agente-desc {
+  font-weight: 500;
+  color: var(--color-neutro-700);
+}
+.linha-agente.is-interrupted .linha-status {
+  font-style: italic;
+}
+
+.linha-mais {
+  min-height: 34px;
+  font-size: 13px;
+  color: var(--color-neutro-700);
+}
+.linha-mais > .linha-nome {
+  grid-column: 1 / -1;
+}
+.linha-mais .mais-acao {
+  margin-left: 10px;
+}
+.linha-mais:hover .linha-mais-texto {
+  color: var(--color-texto);
+}
+
+/* Pedida pelo contador, pelo chip ou pelo aviso: pisca uma vez. */
+.linha.is-destaque {
+  animation: destaque 1.9s ease-out;
+}
+@keyframes destaque {
+  0%,
+  30% {
+    background: color-mix(in srgb, var(--color-ciano) 26%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@container (max-width: 960px) {
+  .lista {
+    --colunas: minmax(0, 1.45fr) 146px minmax(0, 1fr) 108px;
+  }
+  .lista-colunas .col-projeto,
+  .linha > .linha-projeto {
+    display: none;
+  }
+  .linha-projeto-junto {
+    display: inline;
+  }
+}
+@container (max-width: 700px) {
+  .lista {
+    --colunas: minmax(0, 1fr) 140px 96px;
+  }
+  .lista-colunas .col-agora,
+  .linha > .linha-agora {
+    display: none;
+  }
+}
+
 .vazio {
   height: 100%;
   display: grid;
@@ -1011,13 +1638,18 @@ body,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .linha.is-destaque {
+    animation: none;
+    outline: 2px solid var(--color-ciano);
+  }
   .fluxo-pulso {
     display: none;
   }
   .ponto,
   .ponto-vivo,
   .sessao,
-  .react-flow__node {
+  .react-flow__node,
+  .react-flow__edge-path {
     animation: none !important;
     transition: none !important;
   }

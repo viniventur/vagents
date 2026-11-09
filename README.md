@@ -46,9 +46,12 @@ vAgents is a Windows desktop app that shows every Claude Code session open on yo
 one screen. Each session is a card with its topic, your last request and its state (running, waiting
 for you, idle or ended), plus the tree from the main agent down to its subagents (and the ones they
 spawn), with each agent's current step. When a session starts waiting for you, a small popup slides in
-from the corner, with a short chime, without stealing focus. Group sessions on the fly (drag a card
-into a group, or set a rule per folder), rename them, and name each Claude Code account. Closing the
-window leaves it in the tray at about 8 MB. It only reads the files Claude Code already writes: no
+from the corner, with a short chime, without stealing focus. Switch between the map and a tree list
+(collapse or expand each item, or everything at once). Group sessions on the fly (drag a card into a
+group, or set a rule per folder), place the cards wherever you like on the map (one click puts them
+back in the automatic layout), give each group and each card a color of your own (any color, or its
+hex), rename them, and name each Claude Code account. Closing the window
+leaves it in the tray at about 8 MB. It only reads the files Claude Code already writes: no
 hooks, no account, no network. Built with Tauri 2, Rust and React; the interface is in Brazilian
 Portuguese. [Download the latest installer](../../releases/latest).
 
@@ -82,9 +85,10 @@ e quem precisa de você agora.
 
 1. **Abra o vAgents** com algumas sessões do Claude Code rodando. Cada uma vira uma caixa, com a árvore
    dos subagentes dela, e a barra de cima conta quantas estão rodando, esperando você, paradas ou
-   encerradas.
+   encerradas. Prefere uma lista? Clique em **Lista**, no alto.
 2. **Organize.** Arraste uma sessão pelo cabeçalho até o aviso "solte aqui para criar um grupo com ela"
-   e dê um nome ao grupo. As próximas você arrasta para dentro dele.
+   e dê um nome ao grupo (o quadradinho ao lado do nome escolhe a cor dele). As próximas você arrasta
+   para dentro dele, e cada card fica onde você o soltar.
 3. **Clique numa sessão** para ver tudo dela no painel ao lado.
 4. **Feche a janela.** O vAgents fica na bandeja e avisa, com um popup no canto da tela, quando alguma
    sessão esperar por você. Para conferir como ele é, use "Testar o aviso" nos Ajustes.
@@ -106,6 +110,17 @@ cem agentes, por exemplo), a árvore vira colunas ligadas por um barramento, sem
 números da barra de cima enquadram as sessões de cada estado, e o atalho com o nome da sessão que
 espera por você leva direto a ela.
 
+### No mapa ou numa lista
+
+**Mapa** e **Lista**, no alto, trocam a visualização (a escolha fica guardada). A lista mostra o mesmo
+que o mapa, como um explorador de arquivos: os grupos, dentro deles as sessões, e dentro de cada sessão
+a árvore dos subagentes, com colunas para o projeto, o estado, o passo atual e o tempo. A seta de cada
+item recolhe ou expande só ele, e **Recolher tudo** e **Expandir tudo** fazem isso com a lista inteira,
+grupos incluídos. Dá para andar pelo teclado (as setas, e Enter abre os detalhes), e os números da barra
+de cima rolam até as sessões de cada estado e as fazem piscar.
+
+![A lista: Recolher tudo deixa só os grupos; abrir um grupo e uma sessão mostra a árvore dos subagentes, e Expandir tudo abre o resto](docs/lista.webp)
+
 ### Quem está esperando por você
 
 <img src="docs/aviso-entrando.webp" width="392" align="right" alt="O popup de aviso entrando no canto da tela: Esperando uma resposta sua, Checkout com Pix, loja-web, clique para abrir">
@@ -122,15 +137,34 @@ barra de tarefas ganham um ponto magenta enquanto alguém espera, e o título da
 
 ### Organizar na hora
 
-Arraste a caixa pelo cabeçalho até um grupo, até "sem grupo" ou até o aviso que cria um grupo novo,
-que já nasce com o nome aberto para você digitar. Duplo clique renomeia o grupo ou a sessão (apagar o
-nome volta ao título do Claude); os botões do grupo sobem, descem, recolhem e apagam.
+No mapa, arraste o card pelo cabeçalho e solte onde quiser: lado a lado, um embaixo do outro, do jeito
+que fizer sentido para você. Ele fica onde você o deixou, e o card que cresce (porque a sessão criou
+mais subagentes) empurra o vizinho, em vez de ficar por cima dele. **Reorganizar**, no alto, devolve
+todos os cards à organização automática.
+
+![O card "Relatório de outubro" arrastado para o lado do "Tema escuro do blog"; depois, Reorganizar devolve os dois à organização automática](docs/mover.webp)
+
+Solto em outro grupo, o card muda de grupo; em "sem grupo", sai do grupo; no aviso "solte aqui para
+criar um grupo com ela", cria um grupo novo, que já nasce com o nome aberto para você digitar. Na lista,
+arraste a linha da sessão do mesmo jeito. Duplo clique renomeia o grupo ou a sessão (apagar o nome volta
+ao título do Claude); os botões do grupo sobem, descem, recolhem e apagam.
 
 ![Uma sessão arrastada até o aviso de criar um grupo, que nasce e recebe o nome Finanças](docs/organizar.webp)
 
 No painel da sessão, **"sempre pôr neste grupo as sessões abertas em <pasta>"** cria uma regra: as
 sessões que você abrir depois naquela pasta (ou numa subpasta) já entram no grupo. A escolha feita
 numa sessão vale mais que a regra.
+
+### Cores
+
+Por padrão, tudo fica com as cores de sempre; a cor é só se você quiser. O quadradinho ao lado do nome
+do grupo abre o seletor de cor: escolha qualquer cor na área de cor e na faixa de matiz, numa das
+cores prontas, ou digite o hex. O quadro do grupo fica com um tom dela, e a borda também. Cada card
+pode ter a sua cor do mesmo jeito: o botão aparece no canto do card quando o mouse passa por ele (e
+também no painel da sessão, e antes do nome, na lista). A faixa no alto do card continua mostrando o
+estado da sessão. **Usar o padrão** volta à cor de sempre.
+
+![O seletor de cor do grupo "Loja online": arrastar na área de cor pinta o grupo na hora; depois, o card "Checkout com Pix" fica azul pelo hex](docs/cores.webp)
 
 ### Tudo de uma sessão, num clique
 
@@ -340,9 +374,13 @@ src-tauri/src/
   aviso.rs           o popup, o som (sintetizado na hora) e o respeito ao "não incomodar"
   avisos.rs          quando avisar (só a sessão que passou a esperar, sem rajadas)
 src/
-  layout.ts          as caixas, as árvores, os grupos e o "pente" das ligações
-  lib/organizacao.ts os grupos, os nomes e as regras por pasta
-  nodes.tsx, App.tsx a tela; Aviso.tsx, o popup; ContasDoClaude.tsx, as contas; demo.ts, os exemplos
+  layout.ts          as caixas, as árvores, os grupos, o "pente" das ligações e os cards arrumados à mão
+  lib/lista.ts       a lista: as linhas, o recolher e o expandir
+  lib/organizacao.ts os grupos, os nomes, as cores, o lugar dos cards e as regras por pasta
+  lib/cor.ts         o hex e as contas do seletor de cor (matiz, saturação e brilho)
+  nodes.tsx, App.tsx a tela; Lista.tsx, a lista; SeletorDeCor.tsx, o seletor de cor
+  Aviso.tsx          o popup; ContasDoClaude.tsx, as contas
+  demo.ts            as sessões de exemplo do pnpm dev
 ```
 
 </details>

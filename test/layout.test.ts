@@ -115,7 +115,8 @@ describe('grupos', () => {
 
   it('cada sessão fica dentro da faixa do seu grupo; o resto vai para "sem grupo"', () => {
     const graph = buildGraph(snap(tres), { ...opts, organizacao: comGrupos() })
-    const faixas = graph.nodes.filter((n) => n.type === 'lane')
+    // De cima para baixo, na ordem dos grupos (a ordem da lista é outra: é a do DOM, que fica estável).
+    const faixas = graph.nodes.filter((n) => n.type === 'lane').sort((a, b) => a.position.y - b.position.y)
     expect(faixas.map((f) => f.id)).toEqual(['g:trab', 'g:vaz', `g:${SEM_GRUPO}`])
     const dentro = (sessaoId: string, faixaId: string) => {
       const s = graph.nodes.find((n) => n.id === sessaoId)!

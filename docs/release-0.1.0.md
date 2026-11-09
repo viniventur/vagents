@@ -7,7 +7,9 @@ A primeira versão do vAgents: as sessões do Claude Code que estão abertas na 
 - Uma caixa por sessão, com o tema, o seu último pedido e o estado: rodando, esperando você, parada ou encerrada.
 - A árvore do agente principal até os subagentes (e os que eles criaram), com o passo atual de cada um.
 - Um popup pequeno no canto da tela, com um toque curto, quando uma sessão começa a esperar por você. Não rouba o foco e fica quieto em apresentações e em tela cheia.
-- Grupos com nome, criados na hora: arraste as sessões, ou deixe uma regra por pasta.
+- O mapa ou uma lista em árvore, com recolher e expandir cada item ou tudo de uma vez.
+- Grupos com nome, criados na hora: arraste as sessões, ou deixe uma regra por pasta. No mapa, cada card fica onde você o solta; "Reorganizar" volta ao automático.
+- Uma cor para cada grupo e cada card, se você quiser: qualquer cor num seletor de cor, ou o hex.
 - Todas as contas do Claude Code, achadas sozinhas; nos Ajustes, cada uma ganha um nome e o comando que a abre.
 - Na bandeja, com a janela fechada, o vAgents usa uns 8 MB.
 

@@ -20,7 +20,9 @@ const FlowEdge = memo(function FlowEdge(props: EdgeProps<FlowEdgeType>) {
     <g className={`fluxo is-${status}`}>
       <path d={path} className="react-flow__edge-path ligacao" fill="none" />
       {status === 'running' && (
-        <g className="fluxo-pulso" aria-hidden>
+        // O pulso vai direto para o caminho novo, enquanto a linha ainda desliza até lá: a cada caminho
+        // novo, ele nasce de novo, escondido até a linha chegar (veja .fluxo-pulso no CSS).
+        <g className="fluxo-pulso" aria-hidden key={path}>
           <circle r="3.5">
             <animateMotion dur="1.6s" repeatCount="indefinite" path={path} />
           </circle>

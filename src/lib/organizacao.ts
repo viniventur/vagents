@@ -1,12 +1,24 @@
-// A organização que você faz na tela: grupos com nome, o grupo e o nome de cada sessão, e as regras
-// por pasta ("as sessões abertas nesta pasta vão para este grupo"). Fica no organizacao.json da pasta
-// de configuração do app (src-tauri/src/preferencias.rs). Tudo aqui é puro: cada função devolve uma
-// organização nova.
+// A organização que você faz na tela: grupos com nome, o grupo, o nome e o lugar no mapa de cada
+// sessão, e as regras por pasta ("as sessões abertas nesta pasta vão para este grupo"). Fica no
+// organizacao.json da pasta de configuração do app (src-tauri/src/preferencias.rs). Tudo aqui é puro:
+// cada função devolve uma organização nova.
+
+import { normalizarHex } from './cor.ts'
 
 export interface Grupo {
   id: string
   nome: string
   recolhido?: boolean
+  /** A cor do quadro do grupo ("#rrggbb"); sem ela, a de sempre. */
+  cor?: string
+}
+
+/** Onde você deixou o card da sessão no mapa, a partir do canto do miolo da faixa do grupo dela. */
+export interface Posicao {
+  x: number
+  y: number
+  /** O grupo em que a posição foi marcada ("" para "sem grupo"): se a sessão muda de grupo, ela deixa de valer. */
+  grupo: string
 }
 
 export interface AjusteDaSessao {
@@ -14,6 +26,10 @@ export interface AjusteDaSessao {
   grupo?: string
   /** O nome que você deu; sem ele, vale o título que o Claude gera. */
   nome?: string
+  /** O lugar do card no mapa; sem ele, o card segue a organização automática. */
+  posicao?: Posicao
+  /** A cor do card ("#rrggbb"); sem ela, a de sempre. A faixa do estado, no alto do card, não muda. */
+  cor?: string
 }
 
 export interface Organizacao {
@@ -35,7 +51,8 @@ export function normalizar(bruto: unknown): Organizacao {
   if (Array.isArray(o.grupos)) {
     for (const g of o.grupos as Record<string, unknown>[]) {
       if (typeof g?.id !== 'string' || typeof g.nome !== 'string') continue
-      grupos.push({ id: g.id, nome: g.nome, ...(g.recolhido === true && { recolhido: true }) })
+      const cor = typeof g.cor === 'string' ? normalizarHex(g.cor) : null
+      grupos.push({ id: g.id, nome: g.nome, ...(g.recolhido === true && { recolhido: true }), ...(cor && { cor }) })
     }
   }
   const ids = new Set(grupos.map((g) => g.id))
@@ -45,6 +62,12 @@ export function normalizar(bruto: unknown): Organizacao {
       const ajuste: AjusteDaSessao = {}
       if (typeof v?.grupo === 'string' && (v.grupo === '' || ids.has(v.grupo))) ajuste.grupo = v.grupo
       if (typeof v?.nome === 'string' && v.nome.trim()) ajuste.nome = v.nome.trim()
+      const p = v?.posicao as Record<string, unknown> | undefined
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.y) && typeof p.grupo === 'string' && (p.grupo === '' || ids.has(p.grupo))) {
+        ajuste.posicao = { x: Math.round(p.x as number), y: Math.round(p.y as number), grupo: p.grupo }
+      }
+      const cor = typeof v?.cor === 'string' ? normalizarHex(v.cor) : null
+      if (cor) ajuste.cor = cor
       if (Object.keys(ajuste).length) sessoes[chave] = ajuste
     }
   }
@@ -82,18 +105,52 @@ export function alternarRecolhido(org: Organizacao, id: string): Organizacao {
     ...org,
     grupos: org.grupos.map((g) => {
       if (g.id !== id) return g
-      if (g.recolhido) return { id: g.id, nome: g.nome }
-      return { ...g, recolhido: true }
+      if (!g.recolhido) return { ...g, recolhido: true }
+      const { recolhido: _recolhido, ...resto } = g
+      return resto
     }),
   }
 }
 
-/** Some com o grupo; as sessões dele voltam para "sem grupo" e as regras de pasta dele somem. */
+/** A cor do quadro do grupo (null: volta à de sempre). */
+export function definirCorDoGrupo(org: Organizacao, id: string, cor: string | null): Organizacao {
+  const valida = cor === null ? null : normalizarHex(cor)
+  if (cor !== null && !valida) return org
+  return {
+    ...org,
+    grupos: org.grupos.map((g) => {
+      if (g.id !== id) return g
+      const { cor: _antiga, ...resto } = g
+      return valida ? { ...resto, cor: valida } : resto
+    }),
+  }
+}
+
+/** A cor do card da sessão (null: volta à de sempre). */
+export function definirCorDaSessao(org: Organizacao, chave: string, cor: string | null): Organizacao {
+  const valida = cor === null ? null : normalizarHex(cor)
+  if (cor !== null && !valida) return org
+  const { cor: _antiga, ...resto } = org.sessoes[chave] ?? {}
+  const novo: AjusteDaSessao = valida ? { ...resto, cor: valida } : resto
+  const sessoes = { ...org.sessoes }
+  if (Object.keys(novo).length) sessoes[chave] = novo
+  else delete sessoes[chave]
+  return { ...org, sessoes }
+}
+
+/** A cor que você deu ao card da sessão, se deu. */
+export function corDaSessao(org: Organizacao, chave: string): string | null {
+  return org.sessoes[chave]?.cor ?? null
+}
+
+/** Some com o grupo; as sessões dele voltam para "sem grupo" (no automático) e as regras de pasta dele somem. */
 export function apagarGrupo(org: Organizacao, id: string): Organizacao {
   const sessoes: Record<string, AjusteDaSessao> = {}
   for (const [chave, ajuste] of Object.entries(org.sessoes)) {
-    const { grupo, ...resto } = ajuste
-    const novo = grupo === id ? resto : ajuste
+    const { grupo, posicao, ...resto } = ajuste
+    const novo: AjusteDaSessao = { ...resto }
+    if (grupo !== undefined && grupo !== id) novo.grupo = grupo
+    if (posicao && posicao.grupo !== id) novo.posicao = posicao
     if (Object.keys(novo).length) sessoes[chave] = novo
   }
   const pastas = Object.fromEntries(Object.entries(org.pastas).filter(([, g]) => g !== id))
@@ -110,10 +167,45 @@ export function moverGrupo(org: Organizacao, id: string, direcao: -1 | 1): Organ
   return { ...org, grupos }
 }
 
-/** Põe a sessão num grupo (null: sem grupo, mesmo que a pasta dela tenha regra). */
+/**
+ * Põe a sessão num grupo (null: sem grupo, mesmo que a pasta dela tenha regra). No grupo novo, o card
+ * entra na organização automática: o lugar marcado no grupo antigo deixa de valer.
+ */
 export function moverSessao(org: Organizacao, chave: string, grupo: string | null): Organizacao {
-  const atual = org.sessoes[chave] ?? {}
-  return { ...org, sessoes: { ...org.sessoes, [chave]: { ...atual, grupo: grupo ?? '' } } }
+  const { posicao, ...atual } = org.sessoes[chave] ?? {}
+  const novo: AjusteDaSessao = { ...atual, grupo: grupo ?? '' }
+  if (posicao && posicao.grupo === novo.grupo) novo.posicao = posicao
+  return { ...org, sessoes: { ...org.sessoes, [chave]: novo } }
+}
+
+/** O lugar do card no mapa, se ainda vale (foi marcado no grupo em que a sessão está agora). */
+export function posicaoDaSessao(org: Organizacao, sessao: { key: string; cwd: string }): { x: number; y: number } | null {
+  const p = org.sessoes[sessao.key]?.posicao
+  if (!p || p.grupo !== (grupoDaSessao(org, sessao) ?? '')) return null
+  return { x: p.x, y: p.y }
+}
+
+/** Marca o lugar dos cards no mapa (o grupo de cada um: o id, ou "" para "sem grupo"). */
+export function posicionarSessoes(org: Organizacao, posicoes: { chave: string; x: number; y: number; grupo: string }[]): Organizacao {
+  if (posicoes.length === 0) return org
+  const sessoes = { ...org.sessoes }
+  for (const p of posicoes) sessoes[p.chave] = { ...sessoes[p.chave], posicao: { x: Math.round(p.x), y: Math.round(p.y), grupo: p.grupo } }
+  return { ...org, sessoes }
+}
+
+/** Algum card foi arrumado à mão? */
+export function temPosicoes(org: Organizacao): boolean {
+  return Object.values(org.sessoes).some((a) => a.posicao !== undefined)
+}
+
+/** Volta todos os cards para a organização automática. */
+export function reorganizar(org: Organizacao): Organizacao {
+  if (!temPosicoes(org)) return org
+  const sessoes: Record<string, AjusteDaSessao> = {}
+  for (const [chave, { posicao: _posicao, ...resto }] of Object.entries(org.sessoes)) {
+    if (Object.keys(resto).length) sessoes[chave] = resto
+  }
+  return { ...org, sessoes }
 }
 
 /** O nome que você deu à sessão; vazio volta ao título do Claude. */
