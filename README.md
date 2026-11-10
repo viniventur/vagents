@@ -371,7 +371,7 @@ Suba a versão em `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf
 [CHANGELOG](CHANGELOG.md), gere o instalador com `pnpm app:build` e anexe-o a uma Release do GitHub:
 
 ```sh
-gh release create v0.2.0 src-tauri/target/release/bundle/nsis/vAgents_0.2.0_x64-setup.exe --title "vAgents 0.2.0" --notes-file docs/release-0.2.0.md
+gh release create v0.2.1 src-tauri/target/release/bundle/nsis/vAgents_0.2.1_x64-setup.exe --title "vAgents 0.2.1" --notes-file docs/release-0.2.1.md
 ```
 
 O botão "Baixar para Windows" aponta para a Release mais recente.

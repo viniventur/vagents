@@ -1170,6 +1170,9 @@ body,
   width: 256px;
   padding: 12px;
   display: grid;
+  /* Uma coluna que não cresce com o conteúdo: um nome de card longo vira "…" no título, em vez de
+     alargar tudo para fora do quadro. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   background: var(--cartao);
   border: 1px solid var(--color-divisor);

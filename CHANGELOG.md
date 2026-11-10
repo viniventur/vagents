@@ -1,5 +1,16 @@
 # Mudanças
 
+## 0.2.1 — 2026-11-10
+
+- **Sem travar com muitos avisos:** a partir do 4º popup seguido (clicando várias vezes no "Testar",
+  por exemplo), o app travava inteiro. Agora o mais antigo sai, o novo entra e o canto nunca passa de
+  3 popups.
+- **Sai o mais antigo de verdade:** sem lugar no canto, sai o popup mais antigo (antes, sempre o de
+  baixo, que podia ser o mais novo).
+- **O seletor de cor com nome longo:** um card ou grupo de nome comprido alargava o gradiente, as cores
+  e o "Pronto" para fora do quadro; agora o título termina em "…" (o nome inteiro aparece ao passar o
+  mouse).
+
 ## 0.2.0 — 2026-11-10
 
 - **O aviso de "terminou":** a sessão que termina o que estava fazendo (15 s ou mais de trabalho, sem

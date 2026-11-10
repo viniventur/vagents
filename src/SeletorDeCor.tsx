@@ -200,7 +200,9 @@ export function SeletorDeCor({ titulo, cor, ancora, botao, peloTeclado, aoMudar,
       }}
     >
       <div className="seletor-topo">
-        <span className="seletor-titulo">{titulo}</span>
+        <span className="seletor-titulo" title={titulo}>
+          {titulo}
+        </span>
         <span className={cls('seletor-amostra', !escolhida && 'is-padrao')} style={escolhida ? { background: escolhida } : undefined} aria-hidden />
       </div>
       <div

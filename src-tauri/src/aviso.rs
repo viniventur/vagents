@@ -26,6 +26,31 @@ const VAGAS: usize = 3;
 pub struct Vagas(Mutex<[Option<String>; VAGAS]>);
 
 impl Vagas {
+    /// Guarda a vaga do popup novo: a primeira livre ou, sem nenhuma, a do mais antigo (o de número menor),
+    /// que sai. Devolve a vaga e o rótulo do que saiu, para fechar.
+    ///
+    /// Só a escolha acontece com a trava presa: fechar e criar as janelas vem depois, sem ela. Fechar um
+    /// popup dispara, na linha principal, o liberar (que pega a trava), e criar uma janela espera a linha
+    /// principal; com a trava presa nas duas coisas, uma esperava a outra e o app travava inteiro.
+    pub fn reservar(&self, rotulo: &str) -> (usize, Option<String>) {
+        let mut lista = self.0.lock().unwrap();
+        let (indice, saiu) = match lista.iter().position(Option::is_none) {
+            Some(livre) => (livre, None),
+            None => {
+                let numero = |vaga: &Option<String>| vaga.as_deref().and_then(numero_do_popup).unwrap_or(u32::MAX);
+                let antigo = (0..VAGAS).min_by_key(|&i| numero(&lista[i])).unwrap_or(0);
+                (antigo, lista[antigo].take())
+            }
+        };
+        lista[indice] = Some(rotulo.to_string());
+        (indice, saiu)
+    }
+
+    /// O popup ainda tem uma vaga?
+    pub fn ocupa(&self, rotulo: &str) -> bool {
+        self.0.lock().unwrap().iter().any(|vaga| vaga.as_deref() == Some(rotulo))
+    }
+
     /// O popup fechou: a vaga dele fica livre.
     pub fn liberar(&self, rotulo: &str) {
         for vaga in self.0.lock().unwrap().iter_mut() {
@@ -34,6 +59,11 @@ impl Vagas {
             }
         }
     }
+}
+
+/// "aviso-12" → 12: a ordem em que os popups abriram.
+fn numero_do_popup(rotulo: &str) -> Option<u32> {
+    rotulo.strip_prefix("aviso-")?.parse().ok()
 }
 
 /// Mostra o popup e toca o som (sem som, `None`), se o Windows não estiver pedindo silêncio (o teste dos
@@ -60,22 +90,13 @@ fn abrir_popup(app: &AppHandle, aviso: &Aviso) -> tauri::Result<()> {
     let direita = (area.position.x as f64 + area.size.width as f64) / escala;
     let baixo = (area.position.y as f64 + area.size.height as f64) / escala;
 
-    let vagas = app.state::<Vagas>();
-    let mut lista = vagas.0.lock().unwrap();
-    let indice = match lista.iter().position(Option::is_none) {
-        Some(livre) => livre,
-        None => {
-            // Sem vaga: o mais antigo (o de baixo) sai e o novo entra no lugar dele.
-            if let Some(antigo) = lista[0].take() {
-                if let Some(janela) = app.get_webview_window(&antigo) {
-                    let _ = janela.close();
-                }
-            }
-            0
-        }
-    };
-
     let rotulo = format!("aviso-{}", CONTADOR.fetch_add(1, Ordering::Relaxed));
+    // A trava das vagas já foi solta aqui (veja Vagas::reservar).
+    let (indice, saiu) = app.state::<Vagas>().reservar(&rotulo);
+    if let Some(janela) = saiu.and_then(|antigo| app.get_webview_window(&antigo)) {
+        let _ = janela.close();
+    }
+
     let dados = serde_json::json!({
         "tipo": aviso.tipo.nome(),
         "titulo": aviso.titulo,
@@ -83,7 +104,7 @@ fn abrir_popup(app: &AppHandle, aviso: &Aviso) -> tauri::Result<()> {
         "projeto": aviso.projeto,
         "chave": aviso.chave,
     });
-    WebviewWindowBuilder::new(app, &rotulo, WebviewUrl::App("index.html".into()))
+    let criado = WebviewWindowBuilder::new(app, &rotulo, WebviewUrl::App("index.html".into()))
         .title("vAgents · aviso")
         .inner_size(LARGURA, ALTURA)
         .position(direita - LARGURA - MARGEM, baixo - MARGEM - (indice as f64 + 1.0) * ALTURA)
@@ -97,9 +118,21 @@ fn abrir_popup(app: &AppHandle, aviso: &Aviso) -> tauri::Result<()> {
         .focusable(false)
         .visible(true)
         .initialization_script(format!("window.__AVISO__ = {dados};"))
-        .build()?;
-    lista[indice] = Some(rotulo);
-    Ok(())
+        .build();
+    match criado {
+        Ok(janela) => {
+            // Com vários avisos de uma vez, outro pode ter tomado a vaga deste enquanto ele nascia (e aí não
+            // havia janela para fechar): ele sai na hora, como sairia se já estivesse aberto.
+            if !app.state::<Vagas>().ocupa(&rotulo) {
+                let _ = janela.close();
+            }
+            Ok(())
+        }
+        Err(erro) => {
+            app.state::<Vagas>().liberar(&rotulo);
+            Err(erro)
+        }
+    }
 }
 
 /// O Windows aceita avisos agora? Não em apresentação, em tela cheia, com a tela bloqueada nem
@@ -382,6 +415,34 @@ mod testes {
     fn o_toque_proprio_mora_na_pasta_dos_toques() {
         let pasta = Path::new("C:/config");
         assert_eq!(arquivo_do_toque(pasta, Tipo::Terminou), pasta.join("toques").join("terminou.wav"));
+    }
+
+    #[test]
+    fn sem_vaga_sai_o_popup_mais_antigo() {
+        let vagas = Vagas::default();
+        assert_eq!(vagas.reservar("aviso-0"), (0, None));
+        assert_eq!(vagas.reservar("aviso-1"), (1, None));
+        assert_eq!(vagas.reservar("aviso-2"), (2, None));
+        // Cheio: sai o 0 (o de baixo, o mais antigo) e o 3 entra no lugar dele.
+        assert_eq!(vagas.reservar("aviso-3"), (0, Some("aviso-0".into())));
+        // De novo cheio: agora o mais antigo é o 1, não o 3 que acabou de entrar embaixo.
+        assert_eq!(vagas.reservar("aviso-4"), (1, Some("aviso-1".into())));
+        // O que saiu fecha depois: liberar o rótulo dele não mexe em quem já está na vaga.
+        vagas.liberar("aviso-0");
+        assert_eq!(vagas.0.lock().unwrap().clone(), [Some("aviso-3".into()), Some("aviso-4".into()), Some("aviso-2".into())]);
+        // O que perdeu a vaga sabe disso (para fechar, se ainda estava nascendo).
+        assert!(!vagas.ocupa("aviso-1"));
+        assert!(vagas.ocupa("aviso-4"));
+    }
+
+    #[test]
+    fn a_vaga_liberada_e_a_proxima_a_ser_usada() {
+        let vagas = Vagas::default();
+        for i in 0..3 {
+            vagas.reservar(&format!("aviso-{i}"));
+        }
+        vagas.liberar("aviso-1");
+        assert_eq!(vagas.reservar("aviso-9"), (1, None));
     }
 
     #[test]
