@@ -438,6 +438,45 @@ body,
   z-index: 5;
 }
 
+/* A versão nova: uma pílula discreta na barra, que abre a página da versão; o x a dispensa. */
+.versao-nova {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-ciano) 40%, transparent);
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--color-ciano);
+  white-space: nowrap;
+}
+.versao-nova a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  color: inherit;
+  text-decoration: none;
+}
+.versao-nova a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.versao-nova button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+}
+.versao-nova button:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-ciano) 12%, transparent);
+}
+
 .marca-nome {
   font-size: 20px;
   font-weight: 650;
@@ -530,6 +569,59 @@ body,
 .checar input {
   accent-color: var(--color-ciano);
   margin-top: 3px;
+}
+
+/* Os avisos nos Ajustes: um bloco por aviso, com a cor do popup dele, a chave do som e o teste. */
+.ajuste-avisos {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-lg);
+}
+.ajuste-aviso {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.ajuste-aviso + .ajuste-aviso {
+  border-top: 1px solid var(--color-divisor);
+}
+.ajuste-aviso[data-tipo='esperando'] {
+  --c: var(--c-esperando);
+}
+.ajuste-aviso[data-tipo='terminou'] {
+  --c: var(--c-parada);
+}
+.ajuste-aviso .checar > .ponto {
+  margin-top: 6px;
+}
+.ajuste-aviso-dica {
+  font-size: 12.5px;
+  color: var(--color-neutro-600);
+}
+/* O som e o teste, alinhados com o texto do aviso (a caixa, o ponto e os dois vãos). */
+.ajuste-aviso-som {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 39px;
+}
+.ajuste-aviso-som .campo {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 3px 8px;
+  font-size: 13px;
+}
+.ajuste-aviso-som.is-desligado .campo {
+  opacity: 0.5;
+}
+.ajuste-aviso-erro {
+  margin-left: 39px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--color-magenta);
 }
 
 /* ---------- O canvas ---------- */
@@ -1730,7 +1822,7 @@ body,
   display: flex;
   align-items: stretch;
   background: var(--sessao);
-  border-left: 4px solid var(--c-esperando);
+  border-left: 4px solid var(--c);
   border-radius: var(--radius-lg);
   box-shadow: var(--sombra-lg);
   overflow: hidden;
@@ -1784,10 +1876,17 @@ body,
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--c-esperando);
+  color: var(--c);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Terminou: a cor de "parada", como o card dela na tela; o texto um tom acima, para ler bem. */
+.aviso.is-terminou {
+  --c: var(--c-parada);
+}
+.aviso.is-terminou .aviso-motivo {
+  color: var(--color-neutro-700);
 }
 .aviso-titulo {
   font-size: 16px;
@@ -1830,7 +1929,7 @@ body,
   right: 0;
   bottom: 0;
   height: 2px;
-  background: var(--c-esperando);
+  background: var(--c);
   opacity: 0.5;
   transform-origin: left;
   animation-name: aviso-tempo;

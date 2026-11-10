@@ -125,9 +125,8 @@ mod testes {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 struct PreferenciasDaTela {
-    tema: String,
-    avisar: bool,
-    som: bool,
+    #[serde(flatten)]
+    preferencias: Preferencias,
     iniciar_com_windows: bool,
 }
 
@@ -150,16 +149,19 @@ fn gravar_organizacao(estado: State<Estado>, organizacao: serde_json::Value) -> 
 
 #[tauri::command]
 fn ler_preferencias(app: AppHandle, estado: State<Estado>) -> PreferenciasDaTela {
-    let p = estado.preferencias.lock().unwrap().clone();
-    PreferenciasDaTela { tema: p.tema, avisar: p.avisar, som: p.som, iniciar_com_windows: app.autolaunch().is_enabled().unwrap_or(false) }
+    PreferenciasDaTela {
+        preferencias: estado.preferencias.lock().unwrap().clone(),
+        iniciar_com_windows: app.autolaunch().is_enabled().unwrap_or(false),
+    }
 }
 
 #[tauri::command]
 fn definir_preferencias(app: AppHandle, estado: State<Estado>, preferencias: PreferenciasDaTela) -> Result<PreferenciasDaTela, String> {
-    let novas = Preferencias { tema: preferencias.tema.clone(), avisar: preferencias.avisar, som: preferencias.som };
+    let novas = preferencias.preferencias;
     preferencias::gravar(&estado.arquivo("preferencias.json"), &novas)?;
+    let tema = novas.tema.clone();
     *estado.preferencias.lock().unwrap() = novas;
-    aplicar_tema(&app, &preferencias.tema);
+    aplicar_tema(&app, &tema);
     definir_inicio(&app, preferencias.iniciar_com_windows)?;
     marcar_menu(&app);
     Ok(ler_preferencias(app.clone(), estado))
@@ -179,28 +181,77 @@ fn janela_pronta(app: AppHandle, estado: State<Estado>) {
 // Os comandos que criam ou fecham janelas são async: num comando síncrono, criar uma janela trava o app
 // no Windows (o IPC segura a linha principal, que é quem cria a janela).
 
-/// O "Testar o aviso" dos Ajustes: o popup com a primeira sessão aberta (o clique abre ela) e o som.
+/// O som de um aviso, como as preferências pedem (sem som, `None`).
+fn toque_do_aviso(estado: &Estado, p: &Preferencias, tipo: avisos::Tipo) -> Option<aviso::Toque> {
+    p.toca(tipo).then(|| aviso::Toque {
+        nome: p.toque(tipo).to_string(),
+        arquivo: aviso::arquivo_do_toque(&estado.pasta, tipo),
+    })
+}
+
+/// A prévia de um toque, ao escolher nos Ajustes (o "proprio" é o arquivo enviado para esse aviso).
 #[tauri::command]
-async fn testar_aviso(app: AppHandle) -> Result<(), String> {
+fn ouvir_toque(estado: State<Estado>, tipo: String, toque: String) {
+    let arquivo = aviso::arquivo_do_toque(&estado.pasta, avisos::Tipo::de(&tipo));
+    aviso::tocar(&aviso::Toque { nome: toque, arquivo });
+}
+
+/// O arquivo de som que você escolheu para um aviso, já convertido pela tela num WAV curto: fica em
+/// toques/<aviso>.wav, e o aviso passa a tocá-lo.
+#[tauri::command]
+fn enviar_toque(
+    app: AppHandle,
+    estado: State<Estado>,
+    tipo: String,
+    nome: String,
+    wav: Vec<u8>,
+) -> Result<PreferenciasDaTela, String> {
+    aviso::validar_wav(&wav)?;
+    let tipo = avisos::Tipo::de(&tipo);
+    // O arquivo antigo pode estar tocando.
+    aviso::parar_som();
+    preferencias::gravar_bytes(&aviso::arquivo_do_toque(&estado.pasta, tipo), &wav)?;
+    let nome: String = nome.trim().chars().take(80).collect();
+    let novas = {
+        let mut p = estado.preferencias.lock().unwrap();
+        p.usar_toque_proprio(tipo, if nome.is_empty() { "Meu som".into() } else { nome });
+        p.clone()
+    };
+    preferencias::gravar(&estado.arquivo("preferencias.json"), &novas)?;
+    marcar_menu(&app);
+    Ok(ler_preferencias(app.clone(), estado))
+}
+
+/// O "Testar" de cada aviso nos Ajustes ("esperando" ou "terminou"): o popup com a primeira sessão aberta
+/// (o clique abre ela) e o som, se o desse aviso estiver ligado.
+#[tauri::command]
+async fn testar_aviso(app: AppHandle, tipo: String) -> Result<(), String> {
+    let tipo = avisos::Tipo::de(&tipo);
+    let motivo = match tipo {
+        avisos::Tipo::Esperando => "Esperando uma resposta sua (teste)",
+        avisos::Tipo::Terminou => "Terminou em 4 min (teste)",
+    };
     let estado = app.state::<Estado>();
     let exemplo = estado.retrato.lock().unwrap().as_ref().and_then(|r| {
         let s = r.sessions.iter().find(|s| s.status != vagents_sessoes::model::SessionStatus::Ended)?;
         let organizacao = estado.organizacao.lock().unwrap();
         Some(avisos::Aviso {
+            tipo,
             titulo: preferencias::nome_da_sessao(&organizacao, &s.key).unwrap_or_else(|| s.title.clone()),
-            motivo: "Esperando uma resposta sua (teste)".into(),
+            motivo: motivo.into(),
             projeto: s.project.clone(),
             chave: s.key.clone(),
         })
     });
     let aviso = exemplo.unwrap_or_else(|| avisos::Aviso {
+        tipo,
         titulo: "Uma sessão do Claude Code".into(),
-        motivo: "Esperando uma resposta sua (teste)".into(),
+        motivo: motivo.into(),
         projeto: "exemplo".into(),
         chave: String::new(),
     });
-    let som = estado.preferencias.lock().unwrap().som;
-    aviso::mostrar(&app, &aviso, som, true);
+    let p = estado.preferencias.lock().unwrap().clone();
+    aviso::mostrar(&app, &aviso, toque_do_aviso(&estado, &p, tipo).as_ref(), true);
     Ok(())
 }
 
@@ -248,21 +299,25 @@ fn definir_inicio(app: &AppHandle, ligar: bool) -> Result<(), String> {
 /// Os itens marcáveis da bandeja acompanham o que vale agora.
 fn marcar_menu(app: &AppHandle) {
     let estado = app.state::<Estado>();
-    let avisar = estado.preferencias.lock().unwrap().avisar;
+    let p = estado.preferencias.lock().unwrap().clone();
     let iniciar = app.autolaunch().is_enabled().unwrap_or(false);
     if let Some(itens) = estado.menu.lock().unwrap().as_ref() {
-        let _ = itens.avisar.set_checked(avisar);
+        let _ = itens.avisar.set_checked(p.avisar);
+        let _ = itens.avisar_terminou.set_checked(p.avisar_terminou);
         let _ = itens.iniciar.set_checked(iniciar);
     }
     let _ = app.emit("preferencias", ler_preferencias(app.clone(), estado));
 }
 
-/// Pelo menu da bandeja.
-pub(crate) fn alternar_aviso(app: &AppHandle) {
+/// Pelo menu da bandeja: liga ou desliga o aviso de "esperando" ou o de "terminou".
+pub(crate) fn alternar_aviso(app: &AppHandle, tipo: avisos::Tipo) {
     let estado = app.state::<Estado>();
     let novas = {
         let mut p = estado.preferencias.lock().unwrap();
-        p.avisar = !p.avisar;
+        match tipo {
+            avisos::Tipo::Esperando => p.avisar = !p.avisar,
+            avisos::Tipo::Terminou => p.avisar_terminou = !p.avisar_terminou,
+        }
         p.clone()
     };
     let _ = preferencias::gravar(&estado.arquivo("preferencias.json"), &novas);
@@ -281,7 +336,7 @@ fn agora() -> i64 {
 }
 
 /// A linha de execução que acompanha as sessões: a cada segundo, um tick; se mudou, o retrato vai para
-/// a tela, a bandeja se atualiza e as sessões que passaram a esperar por você viram avisos.
+/// a tela, a bandeja se atualiza e as sessões que passaram a esperar por você ou que terminaram viram avisos.
 fn vigiar(app: AppHandle, mut monitor: Monitor, icones: janela::Icones) {
     let mut avisos = avisos::Avisos::default();
     let mut publicado = false;
@@ -308,17 +363,14 @@ fn vigiar(app: AppHandle, mut monitor: Monitor, icones: janela::Icones) {
             *estado.retrato.lock().unwrap() = Some(retrato.clone());
             let _ = app.emit("retrato", &retrato);
             janela::atualizar(&app, &retrato, &icones);
-            let (avisar, som) = {
-                let p = estado.preferencias.lock().unwrap();
-                (p.avisar, p.som)
-            };
+            let p = estado.preferencias.lock().unwrap().clone();
             let organizacao = estado.organizacao.lock().unwrap().clone();
             let nome = |s: &vagents_sessoes::model::SessionView| {
                 preferencias::nome_da_sessao(&organizacao, &s.key).unwrap_or_else(|| s.title.clone())
             };
             for novo in avisos.novos(&retrato, agora(), nome) {
-                if avisar {
-                    aviso::mostrar(&app, &novo, som, false);
+                if p.avisa(novo.tipo) {
+                    aviso::mostrar(&app, &novo, toque_do_aviso(&estado, &p, novo.tipo).as_ref(), false);
                 }
             }
         }
@@ -358,7 +410,7 @@ pub fn run() {
 
             let icones = janela::Icones::new();
             let iniciar = app.autolaunch().is_enabled().unwrap_or(false);
-            let itens = janela::criar_bandeja(app.handle(), prefs.avisar, iniciar, icones.normal.clone())?;
+            let itens = janela::criar_bandeja(app.handle(), &prefs, iniciar, icones.normal.clone())?;
             *app.state::<Estado>().menu.lock().unwrap() = Some(itens);
 
             // Aberto pelo "iniciar com o Windows" (--na-bandeja), o app nem cria a janela: fica só na
@@ -391,6 +443,8 @@ pub fn run() {
             ler_contas,
             salvar_contas,
             testar_aviso,
+            ouvir_toque,
+            enviar_toque,
             fechar_aviso,
             abrir_sessao,
             sessao_pendente

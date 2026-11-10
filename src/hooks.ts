@@ -1,3 +1,4 @@
+import { getVersion } from '@tauri-apps/api/app'
 import { createContext, useCallback, useEffect, useRef, useState } from 'react'
 import type { Snapshot } from '../shared/model.ts'
 import { api, dentroDoApp, type Preferencias } from './lib/api.ts'
@@ -5,6 +6,7 @@ import { organizacaoDeExemplo, retratoDeExemplo } from './demo.ts'
 import { aplicarTema, resolverTema, type TemaAplicado } from './lib/aparencia.ts'
 import { TUDO_ABERTO, type Dobras } from './lib/lista.ts'
 import { VAZIA, normalizar, type Organizacao } from './lib/organizacao.ts'
+import { INTERVALO_MS, PAGINA_DAS_VERSOES, ULTIMA_VERSAO_API, lerRelease, maisNova, type VersaoPublicada } from './lib/versao.ts'
 
 /**
  * O retrato das sessões, ao vivo: o atual ao abrir e cada mudança pelo evento "retrato". Num navegador
@@ -64,7 +66,17 @@ export function useOrganizacao(): [Organizacao, (mudar: (org: Organizacao) => Or
   return [org, atualizar, carregada]
 }
 
-const PREFERENCIAS_PADRAO: Preferencias = { tema: 'sistema', avisar: true, som: true, iniciarComWindows: false }
+const PREFERENCIAS_PADRAO: Preferencias = {
+  tema: 'sistema',
+  avisar: true,
+  som: true,
+  toque: 'madeira-dupla',
+  avisarTerminou: true,
+  somTerminou: true,
+  toqueTerminou: 'madeira',
+  procurarVersao: true,
+  iniciarComWindows: false,
+}
 
 /** As preferências do app; mudam pela tela ou pelo menu da bandeja (o evento "preferencias"). */
 export function usePreferencias(): [Preferencias, (p: Preferencias) => void] {
@@ -115,6 +127,85 @@ export function useTicker(ms: number): number {
     return () => clearInterval(timer)
   }, [ms])
   return now
+}
+
+/** A última consulta às versões, guardada para a janela recriada não consultar de novo. */
+interface ConsultaDeVersao {
+  em: number
+  publicada: VersaoPublicada | null
+}
+const CHAVE_DA_CONSULTA = 'vagents.versao'
+const CHAVE_DA_DISPENSADA = 'vagents.versao.dispensada'
+/** De quanto em quanto tempo ver se a última consulta já venceu (com a janela aberta por dias). */
+const REVER_MS = 15 * 60 * 1000
+
+function lerGuardado<T>(chave: string): T | null {
+  try {
+    const texto = localStorage.getItem(chave)
+    return texto ? (JSON.parse(texto) as T) : null
+  } catch {
+    return null
+  }
+}
+
+function guardar(chave: string, valor: unknown) {
+  try {
+    localStorage.setItem(chave, JSON.stringify(valor))
+  } catch {
+    // sem armazenamento: consulta de novo na próxima vez
+  }
+}
+
+/**
+ * A versão nova do vAgents, se houver uma mais nova que a instalada e você não a tiver dispensado. Consulta
+ * a última Release no GitHub no máximo a cada 6 h; sem rede, tenta de novo depois, quieta. Desligada nos
+ * Ajustes, não consulta nada. Num navegador comum, "?versao-nova" mostra a pílula de exemplo.
+ */
+export function useNovaVersao(ligado: boolean): [VersaoPublicada | null, () => void] {
+  const [exemplo] = useState(() => !dentroDoApp() && new URLSearchParams(location.search).has('versao-nova'))
+  const [instalada, setInstalada] = useState<string | null>(() => (exemplo ? '0.1.1' : null))
+  const [publicada, setPublicada] = useState<VersaoPublicada | null>(() =>
+    exemplo ? { versao: '0.2.0', url: PAGINA_DAS_VERSOES } : (lerGuardado<ConsultaDeVersao>(CHAVE_DA_CONSULTA)?.publicada ?? null),
+  )
+  const [dispensada, setDispensada] = useState<string | null>(() => (exemplo ? null : lerGuardado<string>(CHAVE_DA_DISPENSADA)))
+
+  useEffect(() => {
+    if (dentroDoApp()) getVersion().then(setInstalada, () => undefined)
+  }, [])
+
+  useEffect(() => {
+    if (!ligado || !dentroDoApp()) return
+    let viva = true
+    const consultar = async () => {
+      const ultima = lerGuardado<ConsultaDeVersao>(CHAVE_DA_CONSULTA)
+      if (ultima && Date.now() - ultima.em < INTERVALO_MS) return
+      try {
+        const resposta = await fetch(ULTIMA_VERSAO_API, { signal: AbortSignal.timeout(10_000) })
+        if (!resposta.ok) return
+        const consulta: ConsultaDeVersao = { em: Date.now(), publicada: lerRelease(await resposta.json()) }
+        guardar(CHAVE_DA_CONSULTA, consulta)
+        if (viva) setPublicada(consulta.publicada)
+      } catch {
+        // sem rede (ou o GitHub fora do ar): tenta de novo depois
+      }
+    }
+    void consultar()
+    const timer = setInterval(() => void consultar(), REVER_MS)
+    return () => {
+      viva = false
+      clearInterval(timer)
+    }
+  }, [ligado])
+
+  const dispensar = useCallback(() => {
+    if (!publicada) return
+    if (!exemplo) guardar(CHAVE_DA_DISPENSADA, publicada.versao)
+    setDispensada(publicada.versao)
+  }, [publicada, exemplo])
+
+  const nova =
+    ligado && publicada && instalada && maisNova(publicada.versao, instalada) && publicada.versao !== dispensada ? publicada : null
+  return [nova, dispensar]
 }
 
 /** Um número guardado no navegador do app (a tela funciona sem ele). */

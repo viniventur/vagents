@@ -13,11 +13,15 @@ const raiz = document.getElementById('raiz')
 if (!raiz) throw new Error('Faltou o <div id="raiz"> no index.html')
 
 // A mesma página serve a janela principal e os popups de aviso: a casca põe os dados do aviso aqui.
-// Num navegador comum, "?aviso" mostra um popup de exemplo (para mexer no visual e para as capturas).
-const exemplo: DadosDoAviso = { titulo: 'Checkout com Pix', motivo: 'Esperando uma resposta sua', projeto: 'loja-web', chave: '' }
+// Num navegador comum, "?aviso" mostra um popup de exemplo (para mexer no visual e para as capturas);
+// "?aviso=terminou", o de uma sessão que terminou.
+const pedido = new URLSearchParams(location.search).get('aviso')
+const exemplo: DadosDoAviso =
+  pedido === 'terminou'
+    ? { tipo: 'terminou', titulo: 'Checkout com Pix', motivo: 'Terminou em 4 min', projeto: 'loja-web', chave: '' }
+    : { tipo: 'esperando', titulo: 'Checkout com Pix', motivo: 'Esperando uma resposta sua', projeto: 'loja-web', chave: '' }
 const aviso =
-  (window as unknown as { __AVISO__?: DadosDoAviso }).__AVISO__ ??
-  (!dentroDoApp() && new URLSearchParams(location.search).has('aviso') ? exemplo : undefined)
+  (window as unknown as { __AVISO__?: DadosDoAviso }).__AVISO__ ?? (!dentroDoApp() && pedido !== null ? exemplo : undefined)
 if (aviso) document.documentElement.dataset.janela = 'aviso'
 
 /** No exemplo, "&atraso=600" faz o popup entrar depois de 600 ms (para gravar a entrada). */

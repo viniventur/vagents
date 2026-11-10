@@ -1,5 +1,18 @@
 # Mudanças
 
+## 0.2.0 — 2026-11-10
+
+- **O aviso de "terminou":** a sessão que termina o que estava fazendo (15 s ou mais de trabalho, sem
+  subagente rodando) vira o mesmo popup do "esperando você", em cinza, com quanto tempo ela trabalhou.
+  Tem a sua chave nos Ajustes e no menu da bandeja.
+- **Um som para cada aviso:** madeira com uma ou duas batidas (o novo padrão), sino, sino descendo,
+  gota, acorde, nenhum ou um arquivo seu (MP3, WAV, OGG ou M4A), que vira um toque curto, no mesmo
+  volume dos outros. Escolher na lista já toca.
+- **Os Ajustes dos avisos:** os dois num bloco só, cada um com a cor do popup dele, o som e o "Testar".
+- **Versão nova:** uma pílula discreta na barra de cima avisa quando sai uma versão, e o × a dispensa.
+  O app consulta a API pública do GitHub no máximo a cada 6 h, sem mandar nada seu: é a única conexão
+  dele, e se desliga nos Ajustes.
+
 ## 0.1.1 — 2026-11-09
 
 - **Os mais recentes em cima:** entre os subagentes de um mesmo pai, os que estão rodando vêm

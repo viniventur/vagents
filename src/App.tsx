@@ -3,6 +3,7 @@ import {
   ArrowsOutLineVertical,
   CornersOut,
   Desktop,
+  DownloadSimple,
   GearSix,
   MagicWand,
   Moon,
@@ -10,6 +11,7 @@ import {
   Sun,
   TreeStructure,
   TreeView,
+  X,
 } from '@phosphor-icons/react'
 import {
   Background,
@@ -31,6 +33,7 @@ import { edgeTypes } from './FlowEdge.tsx'
 import {
   NowContext,
   useDobrasDaLista,
+  useNovaVersao,
   useOrganizacao,
   usePreferencias,
   useRetrato,
@@ -51,8 +54,9 @@ import {
   type Graph,
   type MoreNodeData,
 } from './layout.ts'
-import { api, type Tema } from './lib/api.ts'
+import { api, type Preferencias, type Tema, type TipoDeAviso } from './lib/api.ts'
 import { TUDO_ABERTO, TUDO_FECHADO, abrirDobras, acaoDoTudo, alternarDobra, montarLista, type Lista } from './lib/lista.ts'
+import { MAIOR_ARQUIVO, PROPRIO, TOQUES, arquivoParaWav } from './lib/toque.ts'
 import {
   alternarRecolhido,
   apagarGrupo,
@@ -144,6 +148,7 @@ function Tela() {
   const { retrato, noApp } = useRetrato()
   const [org, mudarOrg] = useOrganizacao()
   const [prefs, definirPrefs] = usePreferencias()
+  const [versaoNova, dispensarVersao] = useNovaVersao(prefs.procurarVersao)
   const temaAplicado = useTemaAplicado(prefs.tema)
   const now = useTicker(1000)
   const [vista, setVista] = useStoredChoice<Vista>('vagents:vista', VISTAS, 'mapa')
@@ -593,6 +598,22 @@ function Tela() {
           )}
 
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {versaoNova && (
+              <span className="versao-nova">
+                <a href={versaoNova.url} target="_blank" rel="noreferrer" title="Ver as novidades e baixar o instalador">
+                  <DownloadSimple size={14} weight="bold" />
+                  Versão {versaoNova.versao} disponível
+                </a>
+                <button
+                  type="button"
+                  aria-label={`Dispensar a versão ${versaoNova.versao}`}
+                  title="Dispensar esta versão"
+                  onClick={dispensarVersao}
+                >
+                  <X size={12} weight="bold" />
+                </button>
+              </span>
+            )}
             <div className="seg" role="group" aria-label="Visualização">
               <button
                 type="button"
@@ -674,12 +695,12 @@ function Tela() {
               fechar={() => setAjustes(false)}
               tema={prefs.tema}
               definirTema={(tema) => definirPrefs({ ...prefs, tema })}
-              avisar={prefs.avisar}
-              som={prefs.som}
+              avisos={prefs}
               iniciar={prefs.iniciarComWindows}
+              procurarVersao={prefs.procurarVersao}
+              definirProcurarVersao={(procurarVersao) => definirPrefs({ ...prefs, procurarVersao })}
               janela={janelaEncerradas}
-              definirAvisar={(avisar) => definirPrefs({ ...prefs, avisar })}
-              definirSom={(som) => definirPrefs({ ...prefs, som })}
+              mudarAvisos={(mudanca) => definirPrefs({ ...prefs, ...mudanca })}
               abrirContas={() => {
                 setAjustes(false)
                 setContasAbertas(true)
@@ -788,18 +809,129 @@ function Tela() {
   )
 }
 
+/** Os dois avisos, cada um com o seu popup e o seu som. */
+type Avisos = Pick<
+  Preferencias,
+  'avisar' | 'som' | 'toque' | 'arquivoDoToque' | 'avisarTerminou' | 'somTerminou' | 'toqueTerminou' | 'arquivoDoToqueTerminou'
+>
+
+/** As opções da lista do som que não são toques. */
+const SEM_SOM = 'sem-som'
+const ENVIAR = 'enviar'
+
+/** Um aviso nos Ajustes: a chave dele (com a cor do popup), o som (um dos toques, o seu arquivo ou
+ *  nenhum; escolher já toca) e o teste. */
+function AjusteDeAviso(props: {
+  tipo: TipoDeAviso
+  rotulo: string
+  dica: string
+  ligado: boolean
+  som: boolean
+  toque: string
+  arquivo?: string
+  ligar: (v: boolean) => void
+  escolherSom: (som: boolean, toque?: string) => void
+}) {
+  const seletor = useRef<HTMLInputElement>(null)
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const escolhido = !props.som ? SEM_SOM : props.toque === PROPRIO && !props.arquivo ? TOQUES[0].toque : props.toque
+
+  const escolher = (valor: string) => {
+    setErro(null)
+    if (valor === ENVIAR) return seletor.current?.click()
+    if (valor === SEM_SOM) return props.escolherSom(false)
+    props.escolherSom(true, valor)
+    void api.ouvirToque(props.tipo, valor).catch(() => undefined)
+  }
+
+  const enviar = async (arquivo: File) => {
+    setErro(null)
+    if (arquivo.size > MAIOR_ARQUIVO) return setErro('Esse arquivo é grande demais. Escolha um som curto, de até 5 MB.')
+    setEnviando(true)
+    try {
+      // As preferências novas chegam pelo evento "preferencias".
+      await api.enviarToque(props.tipo, arquivo.name, await arquivoParaWav(arquivo))
+      void api.ouvirToque(props.tipo, PROPRIO).catch(() => undefined)
+    } catch {
+      setErro('Não deu para ler esse arquivo. Tente um MP3, WAV, OGG ou M4A.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="ajuste-aviso" data-tipo={props.tipo}>
+      <label className="checar">
+        <input type="checkbox" checked={props.ligado} onChange={(e) => props.ligar(e.target.checked)} />
+        <span className="ponto" aria-hidden />
+        <span className="flex flex-col">
+          <span>{props.rotulo}</span>
+          <span className="ajuste-aviso-dica">{props.dica}</span>
+        </span>
+      </label>
+      <div className={`ajuste-aviso-som ${props.ligado ? '' : 'is-desligado'}`}>
+        <select
+          className="campo"
+          aria-label={`Som do aviso: ${props.rotulo.toLowerCase()}`}
+          disabled={!props.ligado || enviando}
+          value={enviando ? ENVIAR : escolhido}
+          onChange={(e) => escolher(e.target.value)}
+        >
+          <option value={SEM_SOM}>Sem som</option>
+          <optgroup label="Do vAgents">
+            {TOQUES.map((t) => (
+              <option key={t.toque} value={t.toque}>
+                {t.rotulo}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Seu">
+            {props.arquivo && <option value={PROPRIO}>{props.arquivo}</option>}
+            <option value={ENVIAR}>{enviando ? 'Lendo o arquivo…' : 'Enviar um arquivo de som…'}</option>
+          </optgroup>
+        </select>
+        <button
+          type="button"
+          className="btn btn-fantasma btn-pequeno"
+          disabled={enviando}
+          onClick={() => void api.testarAviso(props.tipo).catch(() => undefined)}
+        >
+          Testar
+        </button>
+        <input
+          ref={seletor}
+          type="file"
+          accept="audio/*"
+          hidden
+          onChange={(e) => {
+            const arquivo = e.target.files?.[0]
+            e.target.value = ''
+            if (arquivo) void enviar(arquivo)
+          }}
+        />
+      </div>
+      {erro && (
+        <p className="ajuste-aviso-erro" role="alert">
+          {erro}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function Ajustes(props: {
   aberto: boolean
   alternar: () => void
   fechar: () => void
   tema: Tema
   definirTema: (tema: Tema) => void
-  avisar: boolean
-  som: boolean
+  avisos: Avisos
   iniciar: boolean
+  procurarVersao: boolean
+  definirProcurarVersao: (v: boolean) => void
   janela: number
-  definirAvisar: (v: boolean) => void
-  definirSom: (v: boolean) => void
+  mudarAvisos: (mudanca: Partial<Avisos>) => void
   abrirContas: () => void
   definirIniciar: (v: boolean) => void
   definirJanela: (v: number) => void
@@ -839,22 +971,45 @@ function Ajustes(props: {
               ))}
             </div>
           </div>
-          <label className="checar">
-            <input type="checkbox" checked={props.avisar} onChange={(e) => props.definirAvisar(e.target.checked)} />
-            <span>Avisar com um popup no canto da tela quando uma sessão começar a esperar por mim</span>
-          </label>
-          <div className={`ml-6 flex items-center justify-between gap-3 ${props.avisar ? '' : 'opacity-50'}`}>
-            <label className="checar">
-              <input type="checkbox" disabled={!props.avisar} checked={props.som} onChange={(e) => props.definirSom(e.target.checked)} />
-              <span>Com um som curto</span>
-            </label>
-            <button type="button" className="btn btn-fantasma btn-pequeno" onClick={() => void api.testarAviso().catch(() => undefined)}>
-              Testar o aviso
-            </button>
+          <div className="flex flex-col gap-1.5">
+            <span>Avisos no canto da tela</span>
+            <div className="ajuste-avisos">
+              <AjusteDeAviso
+                tipo="esperando"
+                rotulo="Quando uma sessão esperar por mim"
+                dica="Uma permissão, uma pergunta"
+                ligado={props.avisos.avisar}
+                som={props.avisos.som}
+                toque={props.avisos.toque}
+                arquivo={props.avisos.arquivoDoToque}
+                ligar={(avisar) => props.mudarAvisos({ avisar })}
+                escolherSom={(som, toque) => props.mudarAvisos(toque ? { som, toque } : { som })}
+              />
+              <AjusteDeAviso
+                tipo="terminou"
+                rotulo="Quando uma sessão terminar"
+                dica="Depois de 15 s ou mais trabalhando"
+                ligado={props.avisos.avisarTerminou}
+                som={props.avisos.somTerminou}
+                toque={props.avisos.toqueTerminou}
+                arquivo={props.avisos.arquivoDoToqueTerminou}
+                ligar={(avisarTerminou) => props.mudarAvisos({ avisarTerminou })}
+                escolherSom={(somTerminou, toqueTerminou) =>
+                  props.mudarAvisos(toqueTerminou ? { somTerminou, toqueTerminou } : { somTerminou })
+                }
+              />
+            </div>
           </div>
           <label className="checar">
             <input type="checkbox" checked={props.iniciar} onChange={(e) => props.definirIniciar(e.target.checked)} />
             <span>Abrir com o Windows, só na bandeja</span>
+          </label>
+          <label className="checar">
+            <input type="checkbox" checked={props.procurarVersao} onChange={(e) => props.definirProcurarVersao(e.target.checked)} />
+            <span className="flex flex-col">
+              <span>Avisar quando sair uma versão nova</span>
+              <span className="ajuste-aviso-dica">Consulta o GitHub a cada 6 h</span>
+            </span>
           </label>
           <button type="button" className="btn btn-secundario btn-pequeno self-start" onClick={props.abrirContas}>
             Contas do Claude Code…

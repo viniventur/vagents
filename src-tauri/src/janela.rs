@@ -10,6 +10,9 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Manager, Wry};
 use vagents_sessoes::model::{SessionStatus, Snapshot};
 
+use crate::avisos::Tipo;
+use crate::preferencias::Preferencias;
+
 pub const JANELA: &str = "principal";
 const BANDEJA: &str = "bandeja";
 
@@ -59,17 +62,21 @@ pub fn comecar_na_bandeja(args: &[String]) -> bool {
 /// Os itens marcáveis do menu da bandeja, para a tela poder marcá-los também.
 pub struct ItensDoMenu {
     pub avisar: CheckMenuItem<Wry>,
+    pub avisar_terminou: CheckMenuItem<Wry>,
     pub iniciar: CheckMenuItem<Wry>,
 }
 
-pub fn criar_bandeja(app: &AppHandle, avisar: bool, iniciar: bool, icone: Image<'static>) -> tauri::Result<ItensDoMenu> {
+pub fn criar_bandeja(app: &AppHandle, prefs: &Preferencias, iniciar: bool, icone: Image<'static>) -> tauri::Result<ItensDoMenu> {
     let mostrar_item = MenuItem::with_id(app, "mostrar", "Mostrar o vAgents", true, None::<&str>)?;
-    let avisar_item = CheckMenuItem::with_id(app, "avisar", "Avisar quando uma sessão esperar por mim", true, avisar, None::<&str>)?;
+    let avisar_item =
+        CheckMenuItem::with_id(app, "avisar", "Avisar quando uma sessão esperar por mim", true, prefs.avisar, None::<&str>)?;
+    let terminou_item =
+        CheckMenuItem::with_id(app, "avisar-terminou", "Avisar quando uma sessão terminar", true, prefs.avisar_terminou, None::<&str>)?;
     let iniciar_item = CheckMenuItem::with_id(app, "iniciar", "Abrir com o Windows", true, iniciar, None::<&str>)?;
     let separador = PredefinedMenuItem::separator(app)?;
     let separador2 = PredefinedMenuItem::separator(app)?;
     let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&mostrar_item, &separador, &avisar_item, &iniciar_item, &separador2, &sair])?;
+    let menu = Menu::with_items(app, &[&mostrar_item, &separador, &avisar_item, &terminou_item, &iniciar_item, &separador2, &sair])?;
 
     TrayIconBuilder::with_id(BANDEJA)
         .icon(icone)
@@ -78,7 +85,8 @@ pub fn criar_bandeja(app: &AppHandle, avisar: bool, iniciar: bool, icone: Image<
         .show_menu_on_left_click(false)
         .on_menu_event(|app, evento| match evento.id.as_ref() {
             "mostrar" => mostrar(app),
-            "avisar" => crate::alternar_aviso(app),
+            "avisar" => crate::alternar_aviso(app, Tipo::Esperando),
+            "avisar-terminou" => crate::alternar_aviso(app, Tipo::Terminou),
             "iniciar" => crate::alternar_inicio(app),
             "sair" => app.exit(0),
             _ => {}
@@ -90,7 +98,7 @@ pub fn criar_bandeja(app: &AppHandle, avisar: bool, iniciar: bool, icone: Image<
         })
         .build(app)?;
 
-    Ok(ItensDoMenu { avisar: avisar_item, iniciar: iniciar_item })
+    Ok(ItensDoMenu { avisar: avisar_item, avisar_terminou: terminou_item, iniciar: iniciar_item })
 }
 
 /// Os ícones prontos: o normal, o com o ponto e o selo da barra de tarefas.

@@ -78,7 +78,8 @@ e quem precisa de você agora.
   baixa se faltar.
 - **Claude Code:** 2.1 ou mais novo (testado no 2.1.319). O vAgents só lê os arquivos que ele grava;
   veja [De onde vêm os dados](#de-onde-vêm-os-dados).
-- **Atualizar:** baixe e rode o instalador novo. Os grupos, os nomes e as preferências ficam.
+- **Atualizar:** quando sai uma versão nova, a barra de cima avisa. Baixe e rode o instalador novo: os
+  grupos, os nomes e as preferências ficam.
 - **Desinstalar:** Configurações → Apps → vAgents.
 
 ## Primeiros passos
@@ -91,7 +92,8 @@ e quem precisa de você agora.
    para dentro dele, e cada card fica onde você o soltar.
 3. **Clique numa sessão** para ver tudo dela no painel ao lado.
 4. **Feche a janela.** O vAgents fica na bandeja e avisa, com um popup no canto da tela, quando alguma
-   sessão esperar por você. Para conferir como ele é, use "Testar o aviso" nos Ajustes.
+   sessão esperar por você ou terminar o que estava fazendo. Para conferir como ele é, use o "Testar"
+   de cada aviso nos Ajustes.
 
 ## O que ele faz
 
@@ -131,6 +133,17 @@ Quando uma sessão começa a esperar por você (uma pergunta, uma permissão), u
 canto da tela, com um toque curto. Ele **não rouba o foco** do que você está fazendo, some sozinho em
 alguns segundos (e espera enquanto o mouse está em cima) e, com um clique, abre o vAgents naquela
 sessão.
+
+Quando uma sessão termina o que estava fazendo e fica parada, pronta para o próximo pedido, vem o mesmo
+popup, em cinza, com quanto tempo ela trabalhou ("Terminou em 4 min"). Ele só vem depois de 15 s de
+trabalho (numa resposta rápida você ainda está olhando) e espera os subagentes em segundo plano
+acabarem. Depois de uma espera, a conta recomeça na sua resposta.
+
+Cada um dos dois avisos tem, nos Ajustes, a sua chave, o seu som e um "Testar"; no menu da bandeja, a
+chave. O som é um dos seis do vAgents (madeira com uma ou duas batidas, sino, sino descendo, gota e
+acorde), nenhum ou um arquivo seu: MP3, WAV, OGG ou M4A, de até 5 MB. De saída, são batidas curtas de
+madeira: duas para "esperando você" e uma para "terminou", para dar para saber qual chegou sem olhar. O arquivo vira um toque curto, de até 5 s, sem o silêncio das pontas e no mesmo
+volume dos outros. Escolher um som na lista já toca ele.
 
 Com o Windows numa apresentação ou num jogo em tela cheia, ele fica quieto. O ícone da bandeja e o da
 barra de tarefas ganham um ponto magenta enquanto alguém espera, e o título da janela diz quantas.
@@ -189,7 +202,10 @@ comando para retomá-la (`claude --resume …`, já na pasta e na conta certas).
   `.claude` e `.claude-*` do seu usuário). Em "Contas do Claude Code…", dê a cada uma um nome e o
   comando que abre o Claude nela.
 - **Tema:** claro ou escuro, no botão do sol e da lua; nos Ajustes, também "Como o Windows".
-- **Aviso e som:** liga e desliga cada um; as sessões encerradas ficam na lista por 1, 3 ou 24 horas.
+- **Avisos:** o de "esperando você" e o de "terminou", cada um com a sua chave e o seu som (um dos do
+  vAgents, nenhum ou um arquivo seu); as sessões encerradas ficam na lista por 1, 3 ou 24 horas.
+- **Versão nova:** quando sai uma, uma pílula discreta na barra de cima ("Versão 0.2.0 disponível") abre a
+  página dela, com as novidades e o instalador; o x dispensa aquela versão. Dá para desligar a consulta.
 
 ### Leve na bandeja
 
@@ -221,8 +237,9 @@ feitos e testados lá. A leitura das sessões (`src-tauri/sessoes`) não depende
 <summary><b>Meus dados vão para algum lugar?</b></summary>
 <br>
 
-Não. Sem conta, sem servidor, sem telemetria, sem rede. O vAgents só lê os arquivos que o Claude Code
-grava na sua pasta de usuário, e guarda o que é seu em `%APPDATA%\br.com.viniciusventura.vagents\`. Veja
+Não. Sem conta, sem servidor, sem telemetria. O vAgents só lê os arquivos que o Claude Code grava na
+sua pasta de usuário, e guarda o que é seu em `%APPDATA%\br.com.viniciusventura.vagents\`. A única
+conexão é a consulta às versões novas no GitHub, que não manda nada seu e dá para desligar. Veja
 [Privacidade e segurança](#privacidade-e-segurança).
 
 </details>
@@ -272,20 +289,24 @@ foi feito e testado no Claude Code 2.1.319. Se algo parar de bater depois de atu
 <summary><b>O popup não apareceu.</b></summary>
 <br>
 
-Confira, nos Ajustes, se o aviso está ligado, e use "Testar o aviso". Com o Windows em apresentação, num
+Confira, nos Ajustes, se o aviso está ligado, e use o "Testar" dele. Com o Windows em apresentação, num
 jogo em tela cheia ou com a tela bloqueada, o aviso fica quieto de propósito. Uma janela que você mesmo
-abriu no terminal (como o `/config`) também não avisa.
+abriu no terminal (como o `/config`) também não avisa. O de "terminou" não vem para um trabalho de menos
+de 15 s, nem enquanto algum subagente da sessão ainda roda.
 
 </details>
 
 ## Privacidade e segurança
 
-- **Nada sai do seu computador.** O vAgents não usa a rede: nem atualização automática, nem telemetria.
-  Um link (como o do site do autor) abre no seu navegador, nunca dentro do app.
+- **Nada seu sai do computador.** Sem telemetria e sem atualização automática. A única conexão é uma
+  consulta, no máximo a cada 6 h, à [última versão do vAgents](https://api.github.com/repos/viniventur/vagents/releases/latest)
+  na API pública do GitHub, para mostrar a pílula de versão nova; ela não manda dado nenhum seu e se
+  desliga nos Ajustes ("Avisar quando sair uma versão nova"). Um link (como o do site do autor) abre no
+  seu navegador, nunca dentro do app.
 - **Ele só lê.** Os históricos do Claude Code têm tudo o que você conversou com ele; o vAgents os lê
   para montar a tela e não escreve neles nem os copia para lugar nenhum.
 - **A interface é fechada**: só conversa com o núcleo pelo IPC do Tauri, a política de conteúdo (CSP) só
-  aceita o que vem do próprio app e a janela não navega para fora dele.
+  aceita o que vem do próprio app (e, de fora, só a API do GitHub) e a janela não navega para fora dele.
 - **"Abrir com o Windows"** grava a entrada de sempre em `HKCU\...\Run`, e só quando você liga.
 
 ### De onde vêm os dados
@@ -325,7 +346,8 @@ pnpm test:rust    # a leitura das sessões (src-tauri/sessoes) e a casca
 
 Com o DevTools remoto do WebView2, dá para inspecionar e dirigir o app em `http://127.0.0.1:9333` (pelo
 `edge://inspect` ou pelo protocolo do DevTools), com as suas sessões reais. Em `pnpm dev`, `?aviso` na
-URL mostra o popup de exemplo.
+URL mostra o popup de exemplo, e `?aviso=terminou`, o de uma sessão que terminou; `?versao-nova`
+mostra a pílula de versão nova.
 
 ```sh
 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333 pnpm app
@@ -349,7 +371,7 @@ Suba a versão em `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf
 [CHANGELOG](CHANGELOG.md), gere o instalador com `pnpm app:build` e anexe-o a uma Release do GitHub:
 
 ```sh
-gh release create v0.1.1 src-tauri/target/release/bundle/nsis/vAgents_0.1.1_x64-setup.exe --title "vAgents 0.1.1" --notes-file docs/release-0.1.1.md
+gh release create v0.2.0 src-tauri/target/release/bundle/nsis/vAgents_0.2.0_x64-setup.exe --title "vAgents 0.2.0" --notes-file docs/release-0.2.0.md
 ```
 
 O botão "Baixar para Windows" aponta para a Release mais recente.
@@ -374,13 +396,14 @@ src-tauri/sessoes/   a leitura das sessões do Claude Code (Rust, sem Tauri, com
 src-tauri/src/
   lib.rs             a janela, os comandos, as contas e a linha que acompanha as sessões
   janela.rs          a bandeja, o ponto de "esperando você" e a janela que é criada e destruída
-  aviso.rs           o popup, o som (sintetizado na hora) e o respeito ao "não incomodar"
-  avisos.rs          quando avisar (só a sessão que passou a esperar, sem rajadas)
+  aviso.rs           o popup, os toques (sintetizados na hora, ou o seu arquivo) e o "não incomodar"
+  avisos.rs          quando avisar (a sessão que passou a esperar ou que terminou, sem rajadas)
 src/
   layout.ts          as caixas, as árvores, os grupos, o "pente" das ligações e os cards arrumados à mão
   lib/lista.ts       a lista: as linhas, o recolher e o expandir
   lib/organizacao.ts os grupos, os nomes, as cores, o lugar dos cards e as regras por pasta
   lib/cor.ts         o hex e as contas do seletor de cor (matiz, saturação e brilho)
+  lib/toque.ts       o seu arquivo de som virando um toque (WAV curto, sem silêncio, no volume certo)
   nodes.tsx, App.tsx a tela; Lista.tsx, a lista; SeletorDeCor.tsx, o seletor de cor
   Aviso.tsx          o popup; ContasDoClaude.tsx, as contas
   demo.ts            as sessões de exemplo do pnpm dev

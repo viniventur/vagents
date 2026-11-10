@@ -1,10 +1,11 @@
 import { X } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
-import { api } from './lib/api.ts'
+import { api, type TipoDeAviso } from './lib/api.ts'
 import { Marca } from './Marca.tsx'
 
 /** O que a casca manda para o popup (src-tauri/src/aviso.rs, em window.__AVISO__). */
 export interface DadosDoAviso {
+  tipo?: TipoDeAviso
   titulo: string
   motivo: string
   projeto: string
@@ -14,7 +15,7 @@ export interface DadosDoAviso {
 /** Quanto tempo o popup fica, sem contar o tempo com o mouse em cima. */
 const DURACAO = 9000
 
-/** O popup de "esperando você": pequeno, no canto, sem roubar o foco. Some sozinho; o clique abre a sessão. */
+/** O popup de "esperando você" ou de "terminou": pequeno, no canto, sem roubar o foco. Some sozinho; o clique abre a sessão. */
 export function Aviso({ dados }: { dados: DadosDoAviso }) {
   const [saindo, setSaindo] = useState(false)
   const [parado, setParado] = useState(false)
@@ -38,7 +39,7 @@ export function Aviso({ dados }: { dados: DadosDoAviso }) {
 
   return (
     <div
-      className={`aviso ${saindo ? 'is-saindo' : ''}`}
+      className={`aviso ${dados.tipo === 'terminou' ? 'is-terminou' : ''} ${saindo ? 'is-saindo' : ''}`}
       onMouseEnter={() => setParado(true)}
       onMouseLeave={() => setParado(false)}
       role="status"

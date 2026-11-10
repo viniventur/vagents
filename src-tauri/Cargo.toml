@@ -1,6 +1,6 @@
 [package]
 name = "vagents"
-version = "0.1.1"
+version = "0.2.0"
 description = "vAgents: as sessões do Claude Code e os subagentes de cada uma, ao vivo"
 authors = ["Vinícius Ventura"]
 license = "MIT"
