@@ -1,6 +1,6 @@
 [package]
 name = "vagents"
-version = "0.2.1"
+version = "0.3.0"
 description = "vAgents: as sessões do Claude Code e os subagentes de cada uma, ao vivo"
 authors = ["Vinícius Ventura"]
 license = "MIT"
@@ -21,9 +21,14 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # A leitura das sessões do Claude Code (src-tauri/sessoes): sem Tauri, com testes próprios.
 vagents-sessoes = { path = "sessoes" }
+# O "Salvar como" da tela (PNG, PDF, Markdown e JSON): a janela de escolher onde salvar.
+tauri-plugin-dialog = "2"
 
-# O toque do aviso (PlaySoundW, da memória) e o "não incomodar" do Windows (SHQueryUserNotificationState).
 [target.'cfg(windows)'.dependencies]
+# O PDF do "Salvar como": o PrintToPdf do WebView2 (as mesmas versões que o wry usa).
+webview2-com = "0.39"
+windows-core = "0.62"
+# O toque do aviso (PlaySoundW, da memória) e o "não incomodar" do Windows (SHQueryUserNotificationState).
 windows-sys = { version = "0.61", features = ["Win32_Media_Audio", "Win32_UI_Shell"] }
 
 [profile.release]

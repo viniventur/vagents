@@ -1,7 +1,7 @@
 {
   "name": "vagents",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "vAgents: as sessões do Claude Code desta máquina, cada uma com a árvore dos seus subagentes e o estado ao vivo. Windows, Tauri 2.",
   "scripts": {
@@ -21,6 +21,7 @@
     "@phosphor-icons/react": "2.1.10",
     "@tauri-apps/api": "^2.12.4",
     "@xyflow/react": "^12.12.1",
+    "html-to-image": "1.11.13",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

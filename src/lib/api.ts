@@ -73,4 +73,12 @@ export const api = {
   /** A sessão que um aviso pediu para abrir (a janela pode ter nascido agora, depois do clique). */
   sessaoPendente: () => invoke<string | null>('sessao_pendente'),
   aoFocarSessao: (f: (chave: string) => void): Promise<UnlistenFn> => listen<string>('focar-sessao', (e) => f(e.payload)),
+  /** A janela de salvar do Windows. Devolve o nome do arquivo escolhido (null: você cancelou). */
+  escolherDestino: (nome: string, formato: 'png' | 'pdf' | 'md' | 'json') => invoke<string | null>('escolher_destino', { nome, formato }),
+  /** Grava no arquivo escolhido (vai como corpo cru, sem virar JSON). Devolve o caminho. */
+  gravarDestino: (bytes: Uint8Array) => invoke<string>('gravar_destino', bytes),
+  /** O PDF da página como ela sai na impressão, no arquivo escolhido. Devolve o caminho. */
+  gravarPdf: () => invoke<string>('gravar_pdf'),
+  /** O Explorador com o último arquivo salvo selecionado. */
+  mostrarSalvo: () => invoke<void>('mostrar_salvo'),
 }

@@ -165,11 +165,22 @@ const SessionNode = memo(function SessionNode({ data }: NodeProps<SessionFlowNod
       >
         <div className="sessao-meta">
           <Selo status={s.status} />
-          <span className="sessao-projeto" title={s.cwd}>
-            {s.project}
+          {/* Onde ela roda: no card estreito, desce para uma linha só dela (index.css). */}
+          <span className="sessao-onde">
+            <span className="sessao-projeto" title={s.cwd}>
+              {s.project}
+            </span>
+            {s.gitBranch && s.gitBranch !== 'HEAD' && (
+              <span className="sessao-rotulo" title={`Branch: ${s.gitBranch}`}>
+                {s.gitBranch}
+              </span>
+            )}
+            {data.multiConfig && (
+              <span className="sessao-rotulo" title={`Conta: ${s.account}`}>
+                {s.account}
+              </span>
+            )}
           </span>
-          {s.gitBranch && s.gitBranch !== 'HEAD' && <span className="sessao-rotulo">{s.gitBranch}</span>}
-          {data.multiConfig && <span className="sessao-rotulo">{s.account}</span>}
           <span className="sessao-idade">{idadeDaSessao(s, now)}</span>
           <BotaoDeCor
             cor={data.cor}

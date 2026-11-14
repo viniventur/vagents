@@ -1,10 +1,13 @@
-import { CopySimple, PencilSimple, X } from '@phosphor-icons/react'
+import { CopySimple, DotsThree, PencilSimple, X } from '@phosphor-icons/react'
 import { useContext, useState, type ReactNode } from 'react'
 import type { AgentView, SessionView } from '../shared/model.ts'
 import { NowContext } from './hooks.ts'
 import { countAgents, type Selection } from './layout.ts'
+import { copiarTexto } from './lib/copiar.ts'
 import { corDaSessao, grupoDaSessao, nomeDaSessao, regraDaPasta, type Organizacao } from './lib/organizacao.ts'
+import { Menu, type LugarDoMenu } from './Menu.tsx'
 import { BotaoDeCor, Selo, TextoEditavel, type Acoes } from './nodes.tsx'
+import { itensDeSaida, type PedidoDeSaida } from './Saida.tsx'
 import { AGENT_STATUS, clock, duration, modelLabel, plural, relTime, resumeCommand, waitingReason } from './text.ts'
 
 const NOVO_GRUPO = '__novo__'
@@ -17,6 +20,8 @@ export interface AcoesDoPainel {
   definirRegra: (pasta: string, grupo: string | null) => void
   escolherCor: Acoes['escolherCor']
   definirCorDaSessao: (chave: string, cor: string | null) => void
+  /** O "Salvar como" e o "Imprimir" dos três pontinhos (só a sessão do painel). */
+  salvarOuImprimir: (pedido: PedidoDeSaida) => void
 }
 
 interface Props {
@@ -31,15 +36,53 @@ interface Props {
 export function Details({ selecao, org, acoes, aoFechar, aoEscolherSessao }: Props) {
   return (
     <aside className="detalhes" aria-label="Detalhes">
-      <button type="button" className="btn btn-icone absolute top-2.5 right-2.5" onClick={aoFechar} aria-label="Fechar">
-        <X />
-      </button>
+      <div className="detalhes-acoes">
+        {!selecao.agent && <MaisDaSessao chave={selecao.session.key} acoes={acoes} />}
+        <button type="button" className="btn btn-icone" onClick={aoFechar} aria-label="Fechar" title="Fechar">
+          <X />
+        </button>
+      </div>
       {selecao.agent ? (
         <DetalhesDoAgente agente={selecao.agent} sessao={selecao.session} org={org} aoEscolherSessao={aoEscolherSessao} />
       ) : (
         <DetalhesDaSessao sessao={selecao.session} org={org} acoes={acoes} />
       )}
     </aside>
+  )
+}
+
+/** Os três pontinhos do painel: salvar ou imprimir só esta sessão. */
+function MaisDaSessao({ chave, acoes }: { chave: string; acoes: AcoesDoPainel }) {
+  const [menu, setMenu] = useState<{ lugar: LugarDoMenu; botao: HTMLElement; peloTeclado: boolean } | null>(null)
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-icone"
+        aria-label="Mais opções desta sessão"
+        title="Salvar ou imprimir esta sessão"
+        aria-haspopup="menu"
+        aria-expanded={menu !== null}
+        onClick={(e) => {
+          const botao = e.currentTarget
+          setMenu((aberto) =>
+            aberto ? null : { lugar: { tipo: 'botao', rect: botao.getBoundingClientRect() }, botao, peloTeclado: e.detail === 0 },
+          )
+        }}
+      >
+        <DotsThree weight="bold" />
+      </button>
+      {menu && (
+        <Menu
+          rotulo="Esta sessão"
+          lugar={menu.lugar}
+          gatilho={menu.botao}
+          peloTeclado={menu.peloTeclado}
+          itens={[{ tipo: 'titulo', rotulo: 'Esta sessão' }, ...itensDeSaida(acoes.salvarOuImprimir, chave)]}
+          aoFechar={() => setMenu(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -242,23 +285,6 @@ function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
       <dd>{children}</dd>
     </>
   )
-}
-
-/** Copia pelo navegador; se ele recusar, pelo jeito antigo (um campo escondido e o "copiar"). */
-async function copiarTexto(texto: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(texto)
-    return
-  } catch {
-    const campo = document.createElement('textarea')
-    campo.value = texto
-    campo.style.position = 'fixed'
-    campo.style.opacity = '0'
-    document.body.appendChild(campo)
-    campo.select()
-    document.execCommand('copy')
-    campo.remove()
-  }
 }
 
 function Copiar({ texto, rotulo }: { texto: string; rotulo: string }) {

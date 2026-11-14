@@ -190,6 +190,14 @@ comando para retomá-la (`claude --resume …`, já na pasta e na conta certas).
 
 ![O painel de uma sessão: o grupo, a regra da pasta, o último pedido, o passo atual e os detalhes](docs/painel.webp)
 
+### Salvar e imprimir
+
+O botão direito abre o menu do vAgents: **Salvar como** imagem (PNG), PDF, Markdown ou JSON, e
+**Imprimir** (também no Ctrl+P). Sai um documento com todas as sessões à mostra, cada uma com tudo o que
+o painel mostra e a árvore inteira dos subagentes, no tema de agora (claro ou escuro). Os três pontinhos
+do painel fazem o mesmo só com aquela sessão. O JSON traz os dados como o app os lê, com as datas em ISO,
+para outro programa.
+
 ### Do seu jeito
 
 <p align="center">
@@ -371,7 +379,7 @@ Suba a versão em `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf
 [CHANGELOG](CHANGELOG.md), gere o instalador com `pnpm app:build` e anexe-o a uma Release do GitHub:
 
 ```sh
-gh release create v0.2.1 src-tauri/target/release/bundle/nsis/vAgents_0.2.1_x64-setup.exe --title "vAgents 0.2.1" --notes-file docs/release-0.2.1.md
+gh release create v0.3.0 src-tauri/target/release/bundle/nsis/vAgents_0.3.0_x64-setup.exe --title "vAgents 0.3.0" --notes-file docs/release-0.3.0.md
 ```
 
 O botão "Baixar para Windows" aponta para a Release mais recente.

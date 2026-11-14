@@ -6,6 +6,7 @@ mod aviso;
 mod avisos;
 mod janela;
 mod preferencias;
+mod salvar;
 
 use preferencias::Preferencias;
 use serde::{Deserialize, Serialize};
@@ -384,7 +385,10 @@ pub fn run() {
         // Abrir de novo só traz a janela que já existe.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| janela::mostrar(app)))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--na-bandeja"])))
+        // A janela de salvar do "Salvar como" (salvar.rs); a tela não a chama direto.
+        .plugin(tauri_plugin_dialog::init())
         .manage(aviso::Vagas::default())
+        .manage(salvar::Destinos::default())
         .setup(|app| {
             let pasta = app.path().app_config_dir()?;
             let home = app.path().home_dir()?;
@@ -447,7 +451,11 @@ pub fn run() {
             enviar_toque,
             fechar_aviso,
             abrir_sessao,
-            sessao_pendente
+            sessao_pendente,
+            salvar::escolher_destino,
+            salvar::gravar_destino,
+            salvar::gravar_pdf,
+            salvar::mostrar_salvo
         ])
         .build(tauri::generate_context!())
         .expect("erro ao iniciar o vAgents")

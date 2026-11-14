@@ -1,6 +1,8 @@
 import {
+  ArrowClockwise,
   ArrowsInLineVertical,
   ArrowsOutLineVertical,
+  Copy,
   CornersOut,
   Desktop,
   DownloadSimple,
@@ -55,6 +57,7 @@ import {
   type MoreNodeData,
 } from './layout.ts'
 import { api, type Preferencias, type Tema, type TipoDeAviso } from './lib/api.ts'
+import { copiarTexto } from './lib/copiar.ts'
 import { TUDO_ABERTO, TUDO_FECHADO, abrirDobras, acaoDoTudo, alternarDobra, montarLista, type Lista } from './lib/lista.ts'
 import { MAIOR_ARQUIVO, PROPRIO, TOQUES, arquivoParaWav } from './lib/toque.ts'
 import {
@@ -80,7 +83,9 @@ import { ContasDoClaude } from './ContasDoClaude.tsx'
 import { Credito } from './Credito.tsx'
 import { VistaEmLista, type Destaque } from './Lista.tsx'
 import { Marca } from './Marca.tsx'
+import { Menu, type ItemDoMenu } from './Menu.tsx'
 import { AcoesContext, nodeTypes, type Acoes, type AlvoDaCor } from './nodes.tsx'
+import { itensDeSaida, useSaida } from './Saida.tsx'
 import { SeletorDeCor, type Ancora } from './SeletorDeCor.tsx'
 import { SESSION_STATUS } from './text.ts'
 
@@ -166,6 +171,8 @@ function Tela() {
   const [seletor, setSeletor] = useState<SeletorAberto | null>(null)
   const [ajustes, setAjustes] = useState(false)
   const [contasAbertas, setContasAbertas] = useState(false)
+  /** O menu do botão direito: onde abriu e o texto selecionado (para o "Copiar"). */
+  const [menuDaJanela, setMenuDaJanela] = useState<{ x: number; y: number; selecao: string } | null>(null)
   const inicioDoMovimento = useRef<Viewport | null>(null)
   const fantasma = useRef<HTMLDivElement>(null)
   const ultimoArraste = useRef(0)
@@ -205,6 +212,7 @@ function Tela() {
   vistaRef.current = vista
   const orgRef = useRef(org)
   orgRef.current = org
+  const saida = useSaida({ retrato, org, endedWindowMs: janelaEncerradas })
 
   // A janela nasce escondida: aparece quando a tela já tem o que mostrar.
   useEffect(() => {
@@ -235,6 +243,20 @@ function Tela() {
     document.addEventListener('click', aoClicar, true)
     return () => document.removeEventListener('click', aoClicar, true)
   }, [noApp])
+
+  // O botão direito abre o menu do app, não o do navegador (o "Voltar", o "Salvar como" de página e o
+  // "Mais ferramentas" dele não servem aqui). Nos campos de texto fica o do navegador, com recortar e
+  // colar; no pnpm dev, o Shift + botão direito também, para o "Inspecionar".
+  useEffect(() => {
+    const aoAbrirMenu = (e: MouseEvent) => {
+      if (import.meta.env.DEV && e.shiftKey) return
+      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
+      e.preventDefault()
+      setMenuDaJanela({ x: e.clientX, y: e.clientY, selecao: window.getSelection()?.toString().trim() ?? '' })
+    }
+    document.addEventListener('contextmenu', aoAbrirMenu)
+    return () => document.removeEventListener('contextmenu', aoAbrirMenu)
+  }, [])
 
   // A janela nasce escondida e muda de tamanho (maximizar, arrastar a borda): no modo acompanhar, o
   // desenho se reenquadra sempre que o espaço do canvas muda.
@@ -470,8 +492,9 @@ function Tela() {
       definirRegra: (pasta, grupo) => mudarOrg((o) => definirRegraDePasta(o, pasta, grupo)),
       escolherCor,
       definirCorDaSessao: (chave, cor) => mudarCor({ tipo: 'sessao', chave }, cor),
+      salvarOuImprimir: saida.executar,
     }),
-    [mudarOrg, criarGrupoCom, escolherCor, mudarCor],
+    [mudarOrg, criarGrupoCom, escolherCor, mudarCor, saida.executar],
   )
 
   // O que o seletor de cor mostra: o nome e a cor de agora do grupo ou do card. Se o grupo foi apagado,
@@ -541,7 +564,8 @@ function Tela() {
 
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // O Esc que fechou um menu fica nele.
+      if (e.key === 'Escape' && !e.defaultPrevented) {
         setSelecionado(null)
         setAjustes(false)
       }
@@ -786,6 +810,16 @@ function Tela() {
 
       {contasAbertas && <ContasDoClaude aoFechar={() => setContasAbertas(false)} />}
 
+      {menuDaJanela && (
+        <Menu
+          rotulo="Menu"
+          lugar={{ tipo: 'ponto', x: menuDaJanela.x, y: menuDaJanela.y }}
+          itens={itensDaJanela(menuDaJanela.selecao, retrato === null || sessoes.length === 0, saida.executar)}
+          aoFechar={() => setMenuDaJanela(null)}
+        />
+      )}
+      {saida.elementos}
+
       {seletor && noSeletor && (
         <SeletorDeCor
           key={seletor.alvo.tipo === 'grupo' ? `g:${seletor.alvo.id}` : `s:${seletor.alvo.chave}`}
@@ -807,6 +841,20 @@ function Tela() {
       )}
     </NowContext.Provider>
   )
+}
+
+/** O menu do botão direito: o "Copiar" (com texto selecionado), o "Atualizar" e o salvar e imprimir de
+ *  todas as sessões à mostra. */
+function itensDaJanela(selecao: string, semSessoes: boolean, executar: Parameters<typeof itensDeSaida>[0]): ItemDoMenu[] {
+  const copiar: ItemDoMenu[] = selecao
+    ? [{ tipo: 'acao', rotulo: 'Copiar', atalho: 'Ctrl+C', icone: <Copy />, aoEscolher: () => void copiarTexto(selecao) }, { tipo: 'divisor' }]
+    : []
+  return [
+    ...copiar,
+    { tipo: 'acao', rotulo: 'Atualizar', atalho: 'Ctrl+R', icone: <ArrowClockwise />, aoEscolher: () => location.reload() },
+    { tipo: 'divisor' },
+    ...itensDeSaida(executar, null, semSessoes),
+  ]
 }
 
 /** Os dois avisos, cada um com o seu popup e o seu som. */

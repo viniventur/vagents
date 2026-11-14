@@ -22,7 +22,11 @@ const exemplo: DadosDoAviso =
     : { tipo: 'esperando', titulo: 'Checkout com Pix', motivo: 'Esperando uma resposta sua', projeto: 'loja-web', chave: '' }
 const aviso =
   (window as unknown as { __AVISO__?: DadosDoAviso }).__AVISO__ ?? (!dentroDoApp() && pedido !== null ? exemplo : undefined)
-if (aviso) document.documentElement.dataset.janela = 'aviso'
+if (aviso) {
+  document.documentElement.dataset.janela = 'aviso'
+  // No popup, nada de menu do navegador no botão direito (o "Voltar" e o "Salvar como" dele não servem).
+  document.addEventListener('contextmenu', (e) => e.preventDefault())
+}
 
 /** No exemplo, "&atraso=600" faz o popup entrar depois de 600 ms (para gravar a entrada). */
 function Atrasado({ ms, children }: { ms: number; children: ReactNode }) {

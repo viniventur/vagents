@@ -786,6 +786,7 @@ body,
 /* ---------- A sessão ---------- */
 
 .sessao {
+  container: sessao / inline-size;
   width: 100%;
   height: 100%;
   background: var(--sessao);
@@ -852,13 +853,27 @@ body,
   white-space: nowrap;
   overflow: hidden;
 }
+/* O projeto, a branch e a conta. Quando falta espaço, a branch e a conta encolhem antes do projeto. */
+.sessao-onde {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+/* Sem min-width em porcentagem aqui: o Chromium a ignora ao medir a linha e a aplica ao desenhar, e o que
+   faltava saía da branch ("main" virava "m…" até em card largo). */
 .sessao-projeto {
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 650;
   color: var(--color-texto);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .sessao-rotulo {
+  flex: 0 3 auto;
+  min-width: 0;
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 1px 6px;
@@ -896,6 +911,43 @@ body,
 .sessao-desc.is-vazia {
   font-style: italic;
   color: var(--color-neutro-500);
+}
+/* O card estreito (sessão sem subagentes): numa linha só, o projeto, a branch e a conta viravam "vag…",
+   "m…" e "Trab…". Aqui o estado e a idade ficam em cima, e o projeto, a branch e a conta descem para uma
+   linha inteira deles. A descrição cede uma linha, e o cabeçalho continua com a altura do layout. */
+@container sessao (max-width: 560px) {
+  .sessao-cabeca {
+    padding-top: 15px;
+  }
+  .sessao-meta {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 5px;
+  }
+  .sessao-onde {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+  .sessao-idade {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+    margin-left: 0;
+  }
+  .cor-botao-cartao {
+    grid-row: 1;
+    grid-column: 3;
+  }
+  .sessao-rotulo {
+    max-width: 50%;
+  }
+  .sessao-titulo {
+    margin-top: 7px;
+  }
+  .sessao-desc {
+    -webkit-line-clamp: 1;
+  }
 }
 
 /* ---------- Os agentes ---------- */
@@ -1636,11 +1688,16 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A branch e a conta: sem espaço lado a lado, uma desce para baixo da outra (antes viravam "m…" e "Trab…"). */
 .linha-rotulos {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   max-width: 100%;
   min-width: 0;
+}
+.linha-rotulos .sessao-rotulo {
+  max-width: 100%;
 }
 
 .linha-status {
@@ -2025,4 +2082,441 @@ body,
   padding: 12px 14px;
   border: 1px solid var(--color-divisor);
   border-radius: var(--radius-md);
+}
+
+/* ============================================================================
+   O menu: o do botão direito (no lugar do menu do navegador) e o dos três pontinhos do painel.
+   Sem transform aqui: o submenu é fixed e mora dentro dele.
+   ========================================================================== */
+
+.menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 236px;
+  max-width: 320px;
+  padding: 5px;
+  background: var(--sessao);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+  font-size: 13.5px;
+  animation: menu-entra 90ms ease-out;
+}
+@keyframes menu-entra {
+  from {
+    opacity: 0;
+  }
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px 6px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  line-height: 1.3;
+}
+.menu-item:focus,
+.menu-item.is-aberto {
+  background: color-mix(in srgb, var(--color-texto) 8%, transparent);
+}
+.menu-item:focus-visible {
+  outline: none;
+}
+.menu-item[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+.menu-icone {
+  display: inline-flex;
+  justify-content: center;
+  width: 18px;
+  flex: none;
+  color: var(--color-neutro-700);
+}
+.menu-rotulo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.menu-rotulo small {
+  font-size: 12px;
+  color: var(--color-neutro-600);
+}
+.menu-atalho {
+  margin-left: 18px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--color-neutro-600);
+}
+.menu-seta {
+  flex: none;
+  color: var(--color-neutro-600);
+}
+.menu-divisor {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--color-divisor);
+}
+.menu-titulo {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutro-600);
+}
+
+/* Os três pontinhos e o X do painel de detalhes. */
+.detalhes-acoes {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 2px;
+}
+
+/* O recado do "Salvar como": gerando, salvo (com o "Mostrar na pasta") ou o erro. */
+.recado {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(580px, calc(100vw - 32px));
+  padding: 7px 7px 7px 14px;
+  background: var(--sessao);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-lg);
+  font-size: 14px;
+  transform: translateX(-50%);
+  animation: recado-entra 160ms ease-out;
+}
+.recado.is-trabalhando {
+  padding: 9px 18px 9px 14px;
+}
+.recado > svg:first-child {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.recado.is-pronto > svg:first-child {
+  color: var(--color-ciano);
+}
+.recado.is-erro > svg:first-child {
+  color: var(--color-magenta);
+}
+.recado-texto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.recado-girando {
+  color: var(--color-neutro-600);
+  animation: girar 0.9s linear infinite;
+}
+.recado-fechar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes recado-entra {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+/* ============================================================================
+   O documento do "Salvar como" (PNG e PDF) e do "Imprimir" (Documento.tsx): as sessões com tudo, no tema
+   de agora. Na tela ele fica fora da vista (é de lá que sai o PNG); na impressão, só ele aparece. Nada
+   corta em "…": o que não cabe numa linha desce para a de baixo.
+   ========================================================================== */
+
+.documento-raiz {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  pointer-events: none;
+}
+.documento {
+  --margem-x: 15mm;
+  --margem-y: 13mm;
+  width: 210mm;
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  font-family: var(--font-serifa);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.documento *,
+.documento *::before,
+.documento *::after {
+  animation: none !important;
+  transition: none !important;
+}
+.documento-folha {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+.documento-folha td {
+  padding: 0;
+  vertical-align: top;
+}
+.documento-folha .documento-miolo {
+  padding: 0 var(--margem-x);
+}
+/* O respiro de cima e de baixo, repetido em cada página impressa (o <thead> e o <tfoot>). */
+.documento-margem {
+  height: var(--margem-y);
+}
+.documento-cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-divisor);
+  font-size: 12px;
+  color: var(--color-neutro-600);
+}
+.documento-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-texto);
+}
+.documento-titulo {
+  margin: 18px 0 2px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+.documento-nada {
+  margin: 24px 0;
+  font-style: italic;
+  color: var(--color-neutro-600);
+}
+.documento-grupo {
+  margin-top: 16px;
+}
+.documento-grupo.com-cabeca {
+  padding: 12px 14px 14px;
+  background: var(--faixa);
+  border: 1px solid var(--color-divisor);
+  border-radius: var(--radius-lg);
+}
+.documento-grupo.com-cabeca.tem-cor {
+  background: color-mix(in oklab, var(--cor-grupo) var(--tom-faixa), var(--faixa));
+  border-color: color-mix(in oklab, var(--cor-grupo) 45%, var(--color-divisor));
+}
+.documento-grupo-nome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin-bottom: 10px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+  break-after: avoid;
+}
+.documento-grupo-nome span {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-neutro-600);
+}
+
+.doc-sessao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  background: var(--sessao);
+  border-top: 3px solid var(--c);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-sm);
+}
+.doc-sessao + .doc-sessao {
+  margin-top: 12px;
+}
+.doc-sessao.tem-cor {
+  background: color-mix(in oklab, var(--cor-cartao) var(--tom-cartao), var(--sessao));
+}
+.doc-sessao-cabeca {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  break-inside: avoid;
+}
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  font-size: 12px;
+  color: var(--color-neutro-700);
+}
+.doc-projeto {
+  font-weight: 650;
+  color: var(--color-texto);
+  overflow-wrap: anywhere;
+}
+.doc-rotulo {
+  max-width: none;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+.doc-titulo {
+  font-size: 19px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.doc-nota {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-neutro-600);
+}
+.doc-textos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.doc-bloco {
+  min-width: 0;
+}
+.doc-bloco h6 {
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  color: var(--color-neutro-600);
+  break-after: avoid;
+}
+.doc-h6-resumo {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.doc-texto {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.doc-texto.is-forte {
+  font-weight: 650;
+  color: var(--c-esperando);
+}
+.doc-grade {
+  gap: 4px 14px;
+  font-size: 12px;
+  break-inside: avoid;
+}
+.doc-comando {
+  display: block;
+  white-space: pre-wrap;
+}
+.doc-agentes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Um subagente por linha, recuado pelo nível (quem criou quem). */
+.doc-agente {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 6px 0 6px calc(var(--nivel, 0) * 20px);
+  border-top: 1px solid var(--color-divisor);
+  break-inside: avoid;
+}
+.doc-agente > .ponto {
+  margin-top: 7px;
+}
+.doc-agente-corpo {
+  flex: 1;
+  min-width: 0;
+}
+.doc-agente-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1px 8px;
+}
+.doc-agente-tipo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-neutro-700);
+}
+.doc-agente-desc {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.doc-agente.is-done .doc-agente-desc,
+.doc-agente.is-interrupted .doc-agente-desc {
+  font-weight: 500;
+}
+.doc-agente-passo {
+  font-size: 12px;
+  color: var(--color-neutro-600);
+  overflow-wrap: anywhere;
+}
+
+/* A impressão (o "Imprimir", o Ctrl+P e o PDF): só o documento, em A4 sem margem, com o fundo do tema
+   até a borda; o respiro de cada página vem do próprio documento. */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    height: auto !important;
+    background: var(--color-fundo) !important;
+  }
+  html,
+  body,
+  .documento,
+  .documento * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body:has(> .documento-raiz) > :not(.documento-raiz) {
+    display: none !important;
+  }
+  .documento-raiz {
+    position: static;
+    left: auto;
+  }
+  .documento {
+    width: auto;
+  }
+  /* A sombra sai borrada no papel: vira borda. A sessão que cabe numa página não se parte entre duas. */
+  .doc-sessao {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid var(--color-divisor);
+    border-top: 3px solid var(--c);
+  }
 }

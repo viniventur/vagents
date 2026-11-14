@@ -1,5 +1,20 @@
 # Mudanças
 
+## 0.3.0 — 2026-11-14
+
+- **Salvar e imprimir:** o botão direito abre o menu do vAgents, no lugar do menu do navegador (o
+  "Voltar", o "Salvar como" de página e o "Mais ferramentas" dele não serviam aqui). Ficam o
+  **Atualizar**, o **Salvar como** (imagem PNG, PDF, Markdown ou JSON) e o **Imprimir** (também no
+  Ctrl+P), e o **Copiar** quando há texto selecionado. Nos campos de texto continua o menu do Windows.
+- **O documento:** o PNG, o PDF e a impressão saem iguais: as sessões à mostra, nos grupos, cada uma com
+  tudo o que o painel mostra e a árvore inteira dos subagentes, no tema de agora (claro ou escuro), em
+  A4 com o fundo até a borda. O JSON traz os dados como o app os lê, com as datas em ISO.
+- **Os três pontinhos do painel:** salvar ou imprimir só aquela sessão.
+- **Salvo:** a janela de salvar do Windows e, no fim, um recado com o "Mostrar na pasta".
+- **O card estreito legível:** numa sessão sem subagentes, o projeto, a branch e a conta viravam
+  "vag…", "m…" e "Trab…". Agora o estado e a idade ficam em cima e o resto desce para uma linha só dele.
+  Na lista, a branch e a conta quebram a linha em vez de cortar.
+
 ## 0.2.1 — 2026-11-10
 
 - **Sem travar com muitos avisos:** a partir do 4º popup seguido (clicando várias vezes no "Testar",
