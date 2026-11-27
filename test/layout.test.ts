@@ -158,7 +158,7 @@ describe('grupos', () => {
     expect(graph.nodes.some((n) => n.id === 's:s1')).toBe(false)
     const faixa = graph.nodes.find((n) => n.id === 'g:trab')!
     expect(faixa.height).toBe(SIZE.laneHead)
-    expect(faixa.type === 'lane' && faixa.data.contagem).toEqual({ waiting: 1, running: 1, idle: 0, ended: 0 })
+    expect(faixa.type === 'lane' && faixa.data.contagem).toEqual({ waiting: 1, running: 1, shell: 0, idle: 0, ended: 0 })
   })
 
   it('acha o grupo sob o ponto do arraste', () => {

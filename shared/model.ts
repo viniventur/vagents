@@ -1,7 +1,11 @@
 // O que o servidor manda para a tela: as sessões e os subagentes de cada uma.
 
-/** running: trabalhando · waiting: esperando você · idle: parada, pronta para o próximo pedido · ended: processo fechado. */
-export type SessionStatus = 'running' | 'waiting' | 'idle' | 'ended'
+/**
+ * running: trabalhando · waiting: esperando você · shell: o turno acabou, mas um shell em segundo plano ainda
+ * roda (quando ele acabar, o Claude volta a trabalhar) · idle: parada, pronta para o próximo pedido ·
+ * ended: processo fechado.
+ */
+export type SessionStatus = 'running' | 'waiting' | 'shell' | 'idle' | 'ended'
 
 export type AgentStatus = 'running' | 'done' | 'interrupted'
 

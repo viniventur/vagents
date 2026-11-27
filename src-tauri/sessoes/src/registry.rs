@@ -9,8 +9,9 @@ use serde_json::Value;
 use crate::json::{non_empty, number};
 use crate::model::SessionStatus;
 
-/// Uma sessão aberta. O campo status vale "busy", "idle" ou "waiting"; com "waiting", waiting_for
-/// diz o motivo ("input needed", "dialog open", "sandbox request"...).
+/// Uma sessão aberta. O campo status vale "busy", "shell", "idle" ou "waiting"; com "waiting",
+/// waiting_for diz o motivo ("input needed", "dialog open", "sandbox request"...). "shell" é o "idle"
+/// com um shell em segundo plano ainda rodando (o "1 shell still running" do terminal).
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct LiveRecord {
     pub(crate) config_dir: String,
@@ -135,6 +136,7 @@ pub(crate) fn session_status(rec: Option<&LiveRecord>) -> (SessionStatus, Option
     match rec.status.as_deref() {
         Some("waiting") => (SessionStatus::Waiting, rec.waiting_for.clone()),
         Some("busy") => (SessionStatus::Running, None),
+        Some("shell") => (SessionStatus::Shell, None),
         _ => (SessionStatus::Idle, None),
     }
 }

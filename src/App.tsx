@@ -87,7 +87,7 @@ import { Menu, type ItemDoMenu } from './Menu.tsx'
 import { AcoesContext, nodeTypes, type Acoes, type AlvoDaCor } from './nodes.tsx'
 import { itensDeSaida, useSaida } from './Saida.tsx'
 import { SeletorDeCor, type Ancora } from './SeletorDeCor.tsx'
-import { SESSION_STATUS } from './text.ts'
+import { ORDEM_DOS_ESTADOS, SESSION_STATUS } from './text.ts'
 
 const HORA = 3_600_000
 const JANELAS_DAS_ENCERRADAS = [
@@ -96,7 +96,6 @@ const JANELAS_DAS_ENCERRADAS = [
   { valor: 3 * HORA, rotulo: 'das últimas 3 h' },
   { valor: 24 * HORA, rotulo: 'das últimas 24 h' },
 ]
-const ORDEM: SessionStatus[] = ['waiting', 'running', 'idle', 'ended']
 /**
  * O enquadramento inicial, num objeto fixo: o React Flow copia esta prop para o estado dele sempre que ela
  * muda, e um objeto novo a cada render apagava as opções de um fitView pedido (enquadrar uma sessão)
@@ -574,7 +573,7 @@ function Tela() {
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [])
 
-  const contagem = { waiting: 0, running: 0, idle: 0, ended: 0 } as Record<SessionStatus, number>
+  const contagem: Record<SessionStatus, number> = { waiting: 0, running: 0, shell: 0, idle: 0, ended: 0 }
   for (const s of sessoes) contagem[s.status]++
   const esperando = sessoes.filter((s) => s.status === 'waiting')
   const temConteudo = noMapa ? (graph?.nodes.length ?? 0) > 0 : lista !== null && (lista.sessoes.length > 0 || lista.temGrupos)
@@ -589,7 +588,7 @@ function Tela() {
           </div>
 
           <nav className="flex flex-wrap gap-1.5" aria-label="Sessões por estado">
-            {ORDEM.map((status) => (
+            {ORDEM_DOS_ESTADOS.map((status) => (
               <button
                 key={status}
                 type="button"

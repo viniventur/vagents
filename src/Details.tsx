@@ -8,7 +8,7 @@ import { corDaSessao, grupoDaSessao, nomeDaSessao, regraDaPasta, type Organizaca
 import { Menu, type LugarDoMenu } from './Menu.tsx'
 import { BotaoDeCor, Selo, TextoEditavel, type Acoes } from './nodes.tsx'
 import { itensDeSaida, type PedidoDeSaida } from './Saida.tsx'
-import { AGENT_STATUS, clock, duration, modelLabel, plural, relTime, resumeCommand, waitingReason } from './text.ts'
+import { AGENT_STATUS, DEPOIS_DO_SHELL, ESPERANDO_SHELL, clock, duration, modelLabel, plural, relTime, resumeCommand, waitingReason } from './text.ts'
 
 const NOVO_GRUPO = '__novo__'
 const SEM_GRUPO = ''
@@ -124,6 +124,11 @@ function DetalhesDaSessao({ sessao: s, org, acoes }: { sessao: SessionView; org:
       {nome !== s.title && <p className="-mt-2.5 text-[13px] text-neutro-600">Título do Claude: {s.title}</p>}
       {s.status === 'waiting' && (
         <p className="detalhes-alerta">Esperando {waitingReason(s.waitingFor)}. Responda no terminal dessa sessão.</p>
+      )}
+      {s.status === 'shell' && (
+        <p className="detalhes-alerta is-shell">
+          {ESPERANDO_SHELL}. {DEPOIS_DO_SHELL}
+        </p>
       )}
 
       <Secao titulo="Grupo">

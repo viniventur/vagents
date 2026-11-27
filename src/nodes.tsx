@@ -5,7 +5,7 @@ import type { SessionView } from '../shared/model.ts'
 import { NowContext } from './hooks.ts'
 import type { AgentFlowNode, Counts, LaneFlowNode, MainFlowNode, MoreFlowNode, SessionFlowNode, StatusCounts } from './layout.ts'
 import type { Grupo } from './lib/organizacao.ts'
-import { AGENT_STATUS, SESSION_STATUS, duration, modelLabel, plural, relTime, waitingReason } from './text.ts'
+import { AGENT_STATUS, ESPERANDO_SHELL, ORDEM_DOS_ESTADOS, SESSION_STATUS, duration, modelLabel, plural, relTime, waitingReason } from './text.ts'
 
 /** De quem é a cor que o seletor está mudando: o quadro de um grupo ou o card de uma sessão. */
 export type AlvoDaCor = { tipo: 'grupo'; id: string } | { tipo: 'sessao'; chave: string }
@@ -216,6 +216,7 @@ const SessionNode = memo(function SessionNode({ data }: NodeProps<SessionFlowNod
 /** O que o agente principal da sessão está fazendo (ou esperando). */
 export function agoraDaSessao(s: SessionView): string {
   if (s.status === 'waiting') return `Esperando ${waitingReason(s.waitingFor)}`
+  if (s.status === 'shell') return ESPERANDO_SHELL
   return s.activity ?? (s.status === 'ended' ? 'Encerrada' : 'Sem atividade ainda')
 }
 
@@ -243,7 +244,7 @@ const MainNode = memo(function MainNode({ data }: NodeProps<MainFlowNode>) {
       </div>
       <div className="agente-pe">
         <span>{textoDosSubagentes(data.counts)}</span>
-        {s.activityAt && s.status !== 'waiting' && <span className="ml-auto">{relTime(s.activityAt, now)}</span>}
+        {s.activityAt && s.status !== 'waiting' && s.status !== 'shell' && <span className="ml-auto">{relTime(s.activityAt, now)}</span>}
       </div>
       <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
@@ -294,10 +295,8 @@ const MoreNode = memo(function MoreNode({ data }: NodeProps<MoreFlowNode>) {
   )
 }, soOData)
 
-const ORDEM: SessionView['status'][] = ['waiting', 'running', 'idle', 'ended']
-
 export function Contagem({ contagem }: { contagem: StatusCounts }) {
-  const itens = ORDEM.filter((s) => contagem[s] > 0)
+  const itens = ORDEM_DOS_ESTADOS.filter((s) => contagem[s] > 0)
   if (itens.length === 0) return null
   return (
     <span className="flex items-center gap-3 text-[13px] text-neutro-700">

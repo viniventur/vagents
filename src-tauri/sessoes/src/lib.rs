@@ -5,7 +5,7 @@
 //!
 //! | Arquivo | O que dá |
 //! | --- | --- |
-//! | `<config>/sessions/<pid>.json` | as sessões abertas e o estado: `status` = `busy`, `idle` ou `waiting` (com `waitingFor`) |
+//! | `<config>/sessions/<pid>.json` | as sessões abertas e o estado: `status` = `busy`, `shell` (parada, com um shell em segundo plano rodando), `idle` ou `waiting` (com `waitingFor`) |
 //! | `<config>/projects/<pasta>/<sessão>.jsonl` | o histórico: `ai-title` (tema), `last-prompt` (descrição), o último passo, modelo e branch |
 //! | `<config>/projects/<pasta>/<sessão>/subagents/agent-<id>.meta.json` | cada subagente: tipo, descrição, `spawnDepth`, `toolUseId` (quem o criou) e `finished` |
 //! | `<config>/projects/<pasta>/<sessão>/subagents/agent-<id>.jsonl` | o passo atual de cada subagente |

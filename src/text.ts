@@ -3,9 +3,17 @@ import type { AgentStatus, SessionStatus, SessionView } from '../shared/model.ts
 export const SESSION_STATUS: Record<SessionStatus, string> = {
   running: 'Rodando',
   waiting: 'Esperando você',
+  shell: 'Shell rodando',
   idle: 'Parada',
   ended: 'Encerrada',
 }
+
+/** A ordem dos estados na barra de cima, nas contagens e no documento: do que pede você ao que acabou. */
+export const ORDEM_DOS_ESTADOS: readonly SessionStatus[] = ['waiting', 'running', 'shell', 'idle', 'ended']
+
+/** A sessão com status "shell": o turno acabou, mas um shell em segundo plano ainda roda. */
+export const ESPERANDO_SHELL = 'Esperando um shell em segundo plano'
+export const DEPOIS_DO_SHELL = 'Quando ele acabar, o Claude volta a trabalhar nesta sessão.'
 
 export const AGENT_STATUS: Record<AgentStatus, string> = {
   running: 'Rodando',

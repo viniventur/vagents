@@ -105,7 +105,7 @@ export function montarLista(snapshot: Snapshot, opts: OpcoesDaLista): Lista {
     }
   }
   const contar = (lista: SessionView[]): StatusCounts => {
-    const c: StatusCounts = { waiting: 0, running: 0, idle: 0, ended: 0 }
+    const c: StatusCounts = { waiting: 0, running: 0, shell: 0, idle: 0, ended: 0 }
     for (const s of lista) c[s.status]++
     return c
   }

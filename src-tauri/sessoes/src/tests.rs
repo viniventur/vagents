@@ -168,6 +168,20 @@ mod registro {
     }
 
     #[test]
+    fn shell_e_a_sessao_parada_esperando_um_shell_em_segundo_plano() {
+        // O Claude Code grava "shell" quando o turno acabou mas um shell em segundo plano ainda roda
+        // (o "1 shell still running" do terminal): não é a sessão parada de verdade.
+        assert_eq!(
+            session_status(rec(json!({ "status": "shell" }), true).as_ref()),
+            (SessionStatus::Shell, None)
+        );
+        assert_eq!(
+            session_status(rec(json!({ "status": "shell" }), false).as_ref()),
+            (SessionStatus::Ended, None)
+        );
+    }
+
+    #[test]
     fn processo_morto_ou_sem_registro_e_sessao_encerrada() {
         assert_eq!(
             session_status(rec(json!({ "status": "busy" }), false).as_ref()),
@@ -1011,12 +1025,13 @@ mod formato_json {
         let session = [
             SessionStatus::Running,
             SessionStatus::Waiting,
+            SessionStatus::Shell,
             SessionStatus::Idle,
             SessionStatus::Ended,
         ];
         assert_eq!(
             serde_json::to_value(session).unwrap(),
-            json!(["running", "waiting", "idle", "ended"])
+            json!(["running", "waiting", "shell", "idle", "ended"])
         );
         let agent = [
             AgentStatus::Running,

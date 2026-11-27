@@ -120,6 +120,7 @@ impl Icones {
 pub fn atualizar(app: &AppHandle, retrato: &Snapshot, icones: &Icones) {
     let contar = |status: SessionStatus| retrato.sessions.iter().filter(|s| s.status == status).count();
     let (esperando, rodando) = (contar(SessionStatus::Waiting), contar(SessionStatus::Running));
+    let com_shell = contar(SessionStatus::Shell);
 
     let mut partes = Vec::new();
     if esperando > 0 {
@@ -127,6 +128,9 @@ pub fn atualizar(app: &AppHandle, retrato: &Snapshot, icones: &Icones) {
     }
     if rodando > 0 {
         partes.push(format!("{rodando} rodando"));
+    }
+    if com_shell > 0 {
+        partes.push(format!("{com_shell} com shell rodando"));
     }
     let dica = if partes.is_empty() { "vAgents".to_string() } else { format!("vAgents · {}", partes.join(" · ")) };
 

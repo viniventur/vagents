@@ -113,6 +113,14 @@ describe('o Markdown', () => {
     expect(md).toContain('claude --resume id-a')
   })
 
+  it('a sessão com um shell em segundo plano diz o que espera e conta à parte da parada', () => {
+    const doc = montarDocumento(retrato([sessao('a', 'shell', [], { activity: 'Testes rodando.' }), sessao('b', 'idle')]), VAZIA, janela)!
+    const md = paraMarkdown(doc)
+    expect(md).toContain('2 sessões: 1 shell rodando · 1 parada')
+    expect(md).toContain('**Esperando um shell em segundo plano.** Quando ele acabar, o Claude volta a trabalhar nesta sessão.')
+    expect(md).toContain('**Último passo:** Testes rodando.')
+  })
+
   it('sem sessões, diz que não há nenhuma', () => {
     const md = paraMarkdown(montarDocumento(retrato([]), VAZIA, janela)!)
     expect(md).toContain('_Nenhuma sessão à mostra._')

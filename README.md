@@ -44,7 +44,7 @@ e quem está esperando por você, ao vivo, sem caçar terminal.
 
 vAgents is a Windows desktop app that shows every Claude Code session open on your machine, live, on
 one screen. Each session is a card with its topic, your last request and its state (running, waiting
-for you, idle or ended), plus the tree from the main agent down to its subagents (and the ones they
+for you, waiting on a background shell, idle or ended), plus the tree from the main agent down to its subagents (and the ones they
 spawn), with each agent's current step. When a session starts waiting for you, a small popup slides in
 from the corner, with a short chime, without stealing focus. Switch between the map and a tree list
 (collapse or expand each item, or everything at once). Group sessions on the fly (drag a card into a
@@ -85,8 +85,8 @@ e quem precisa de você agora.
 ## Primeiros passos
 
 1. **Abra o vAgents** com algumas sessões do Claude Code rodando. Cada uma vira uma caixa, com a árvore
-   dos subagentes dela, e a barra de cima conta quantas estão rodando, esperando você, paradas ou
-   encerradas. Prefere uma lista? Clique em **Lista**, no alto.
+   dos subagentes dela, e a barra de cima conta quantas estão rodando, esperando você, com um shell
+   rodando, paradas ou encerradas. Prefere uma lista? Clique em **Lista**, no alto.
 2. **Organize.** Arraste uma sessão pelo cabeçalho até o aviso "solte aqui para criar um grupo com ela"
    e dê um nome ao grupo (a paleta ao lado do nome escolhe a cor dele). As próximas você arrasta
    para dentro dele, e cada card fica onde você o soltar.
@@ -100,7 +100,10 @@ e quem precisa de você agora.
 ### A árvore de cada sessão, ao vivo
 
 Cada sessão é uma caixa com o **tema** (o título que o Claude dá a ela, ou o nome que você der), a
-**descrição** (o seu último pedido) e o **estado**. Dentro, a árvore: do agente principal saem os
+**descrição** (o seu último pedido) e o **estado**. Quando o Claude termina a vez mas deixa um shell
+rodando em segundo plano (o "1 shell still running" do terminal), o estado é **Shell rodando**, com o
+ponto vazado: a sessão não está parada de verdade, porque o Claude volta a trabalhar quando o shell
+acabar. Dentro, a árvore: do agente principal saem os
 subagentes, e deles os que eles criaram, cada um com o tipo, o tempo e o passo atual
 (`Bash: pnpm test`, `Read: checkout.ts`). Os que estão rodando ficam em cima; depois vêm os que
 terminaram, do mais recente ao mais antigo. As ligações dos que estão rodando ganham pontos correndo,
@@ -136,8 +139,8 @@ sessão.
 
 Quando uma sessão termina o que estava fazendo e fica parada, pronta para o próximo pedido, vem o mesmo
 popup, em cinza, com quanto tempo ela trabalhou ("Terminou em 4 min"). Ele só vem depois de 15 s de
-trabalho (numa resposta rápida você ainda está olhando) e espera os subagentes em segundo plano
-acabarem. Depois de uma espera, a conta recomeça na sua resposta.
+trabalho (numa resposta rápida você ainda está olhando) e espera os subagentes e os shells em segundo
+plano acabarem. Depois de uma espera, a conta recomeça na sua resposta.
 
 Cada um dos dois avisos tem, nos Ajustes, a sua chave, o seu som e um "Testar"; no menu da bandeja, a
 chave. O som é um dos seis do vAgents (madeira com uma ou duas batidas, sino, sino descendo, gota e
@@ -323,7 +326,7 @@ Nada de hooks nem de configuração no Claude Code: o vAgents lê, a cada segund
 
 | Arquivo | O que dá |
 | --- | --- |
-| `<config>/sessions/<pid>.json` | as sessões abertas e o estado: `status` = `busy`, `idle` ou `waiting` (com `waitingFor`) |
+| `<config>/sessions/<pid>.json` | as sessões abertas e o estado: `status` = `busy`, `shell` (parada, com um shell em segundo plano rodando), `idle` ou `waiting` (com `waitingFor`) |
 | `<config>/projects/<pasta>/<sessão>.jsonl` | o histórico: `ai-title` (tema), `last-prompt` (descrição), o passo atual, o modelo e a branch |
 | `<config>/projects/<pasta>/<sessão>/subagents/agent-<id>.meta.json` | cada subagente: tipo, descrição, `spawnDepth`, `toolUseId` (quem o criou) e `finished` |
 | `<config>/projects/<pasta>/<sessão>/subagents/agent-<id>.jsonl` | o passo atual de cada subagente |
@@ -379,7 +382,7 @@ Suba a versão em `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf
 [CHANGELOG](CHANGELOG.md), gere o instalador com `pnpm app:build` e anexe-o a uma Release do GitHub:
 
 ```sh
-gh release create v0.3.0 src-tauri/target/release/bundle/nsis/vAgents_0.3.0_x64-setup.exe --title "vAgents 0.3.0" --notes-file docs/release-0.3.0.md
+gh release create v0.3.1 src-tauri/target/release/bundle/nsis/vAgents_0.3.1_x64-setup.exe --title "vAgents 0.3.1" --notes-file docs/release-0.3.1.md
 ```
 
 O botão "Baixar para Windows" aponta para a Release mais recente.

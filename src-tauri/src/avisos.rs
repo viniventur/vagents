@@ -1,8 +1,8 @@
 //! Quando avisar (o popup do aviso.rs). São dois avisos:
 //! - esperando: a sessão que passa a esperar por você (uma permissão, uma resposta);
 //! - terminou: a sessão que estava trabalhando e parou, pronta para o próximo pedido. Trabalhar é rodar
-//!   ou, já parada, ter subagente rodando (os subagentes em segundo plano ainda vão acordar o agente
-//!   principal). A conta começa na última vez que ela passou a rodar: depois de uma espera, vale a partir
+//!   ou, já parada, ter subagente ou shell em segundo plano rodando (os dois ainda vão acordar o agente
+//!   principal quando acabarem). A conta começa na última vez que ela passou a rodar: depois de uma espera, vale a partir
 //!   da sua resposta. Menos de 15 s de trabalho não avisa: você ainda está olhando.
 //!
 //! O que já esperava quando o app abriu não avisa (a janela mostra), e a mesma sessão não repete o mesmo
@@ -95,7 +95,7 @@ fn merece_aviso(s: &SessionView) -> bool {
 
 fn trabalhando(s: &SessionView) -> bool {
     match s.status {
-        SessionStatus::Running => true,
+        SessionStatus::Running | SessionStatus::Shell => true,
         SessionStatus::Idle => s.agents.iter().any(|a| a.status == AgentStatus::Running),
         _ => false,
     }
@@ -273,6 +273,24 @@ mod testes {
         // O subagente acorda o agente principal, que fecha a vez depois.
         a.novos(&retrato(vec![sessao("1", SessionStatus::Running)]), 50_000, titulo);
         assert_eq!(motivos(&mut a, parada(AgentStatus::Done), 65_000), vec!["Terminou em 1 min"]);
+    }
+
+    #[test]
+    fn com_shell_em_segundo_plano_ainda_nao_terminou() {
+        let mut a = Avisos::default();
+        a.novos(&retrato(vec![sessao("1", SessionStatus::Running)]), 0, titulo);
+        assert!(motivos(&mut a, vec![sessao("1", SessionStatus::Shell)], 20_000).is_empty());
+        // O shell acaba e acorda o agente principal, que fecha a vez depois: a conta vem desde o começo.
+        a.novos(&retrato(vec![sessao("1", SessionStatus::Running)]), 100_000, titulo);
+        assert_eq!(motivos(&mut a, vec![sessao("1", SessionStatus::Idle)], 120_000), vec!["Terminou em 2 min"]);
+    }
+
+    #[test]
+    fn o_shell_que_acaba_sem_acordar_o_claude_tambem_e_terminou() {
+        let mut a = Avisos::default();
+        a.novos(&retrato(vec![sessao("1", SessionStatus::Running)]), 0, titulo);
+        a.novos(&retrato(vec![sessao("1", SessionStatus::Shell)]), 10_000, titulo);
+        assert_eq!(motivos(&mut a, vec![sessao("1", SessionStatus::Idle)], 30_000), vec!["Terminou em 30 s"]);
     }
 
     #[test]

@@ -6,13 +6,15 @@
 
 use serde::{Deserialize, Serialize};
 
-/// running: trabalhando · waiting: esperando você · idle: parada, pronta para o próximo pedido ·
-/// ended: processo fechado.
+/// running: trabalhando · waiting: esperando você · shell: o turno acabou, mas um shell em segundo
+/// plano ainda roda (quando ele acabar, o Claude volta a trabalhar) · idle: parada, pronta para o
+/// próximo pedido · ended: processo fechado.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum SessionStatus {
     Running,
     Waiting,
+    Shell,
     Idle,
     Ended,
 }

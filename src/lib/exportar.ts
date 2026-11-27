@@ -4,7 +4,20 @@
 
 import type { AgentView, SessionView, Snapshot } from '../../shared/model.ts'
 import { countAgents, porRecencia, sessoesVisiveis, type Counts, type StatusCounts } from '../layout.ts'
-import { AGENT_STATUS, SESSION_STATUS, clock, duration, modelLabel, plural, relTime, resumeCommand, waitingReason } from '../text.ts'
+import {
+  AGENT_STATUS,
+  DEPOIS_DO_SHELL,
+  ESPERANDO_SHELL,
+  ORDEM_DOS_ESTADOS,
+  SESSION_STATUS,
+  clock,
+  duration,
+  modelLabel,
+  plural,
+  relTime,
+  resumeCommand,
+  waitingReason,
+} from '../text.ts'
 import { corDaSessao, grupoDaSessao, nomeDaSessao, type Grupo, type Organizacao } from './organizacao.ts'
 
 export type Formato = 'png' | 'pdf' | 'md' | 'json'
@@ -102,7 +115,7 @@ export function montarDocumento(retrato: Snapshot, org: Organizacao, opts: Opcoe
       agentes: arvoreCompleta(s.agents),
     }
   }
-  const contagem: StatusCounts = { waiting: 0, running: 0, idle: 0, ended: 0 }
+  const contagem: StatusCounts = { waiting: 0, running: 0, shell: 0, idle: 0, ended: 0 }
   for (const s of sessoes) contagem[s.status]++
 
   const temGrupos = !opts.sessao && org.grupos.length > 0
@@ -132,12 +145,10 @@ export function montarDocumento(retrato: Snapshot, org: Organizacao, opts: Opcoe
 // ---------------------------------------------------------------------------------------------------
 // Os textos que o documento desenhado e o Markdown dividem.
 
-const ORDEM: SessionView['status'][] = ['waiting', 'running', 'idle', 'ended']
-
 /** "3 sessões: 1 rodando · 1 parada · 1 encerrada". */
 export function resumoDaContagem(doc: Documento): string {
   if (doc.total === 0) return 'Nenhuma sessão à mostra'
-  const partes = ORDEM.filter((s) => doc.contagem[s] > 0).map((s) => `${doc.contagem[s]} ${SESSION_STATUS[s].toLowerCase()}`)
+  const partes = ORDEM_DOS_ESTADOS.filter((s) => doc.contagem[s] > 0).map((s) => `${doc.contagem[s]} ${SESSION_STATUS[s].toLowerCase()}`)
   return `${plural(doc.total, 'sessão', 'sessões')}: ${partes.join(' · ')}`
 }
 
@@ -235,6 +246,7 @@ function sessaoEmMd(item: SessaoNoDocumento, doc: Documento, nivel: number): str
   linhas.push('')
 
   if (s.status === 'waiting') linhas.push(`**Esperando ${escaparMd(waitingReason(s.waitingFor))}.** Responda no terminal dessa sessão.`, '')
+  if (s.status === 'shell') linhas.push(`**${ESPERANDO_SHELL}.** ${DEPOIS_DO_SHELL}`, '')
   linhas.push('**Seu último pedido**', '', s.lastPrompt ? citacaoMd(s.lastPrompt) : '_Nenhum registrado._', '')
   const rotuloDoAgora = s.status === 'running' || s.status === 'waiting' ? 'Agora' : 'Último passo'
   const quando = s.activityAt && s.status !== 'waiting' ? ` (${relTime(s.activityAt, agora)})` : ''

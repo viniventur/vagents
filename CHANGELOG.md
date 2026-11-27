@@ -1,5 +1,14 @@
 # Mudanças
 
+## 0.3.1 — 2026-11-27
+
+- **Shell rodando:** quando o Claude termina a vez mas deixa um shell rodando em segundo plano (o
+  "1 shell still running" do terminal), a sessão aparecia como parada. Agora ela tem um estado só
+  dela, **Shell rodando**, com um azul acinzentado e o ponto vazado: no card, na lista, na barra de
+  cima, no painel, no documento e na dica da bandeja. O agente principal diz "Esperando um shell em
+  segundo plano", porque o Claude volta a trabalhar quando ele acabar.
+- **O aviso de "terminou"** espera o shell em segundo plano acabar, como já esperava os subagentes.
+
 ## 0.3.0 — 2026-11-14
 
 - **Salvar e imprimir:** o botão direito abre o menu do vAgents, no lugar do menu do navegador (o

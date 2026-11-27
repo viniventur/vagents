@@ -60,7 +60,7 @@ describe('a lista', () => {
       ['loja', ['b']],
       [SEM_GRUPO, ['a']],
     ])
-    expect(lista.secoes[0]?.contagem).toEqual({ waiting: 1, running: 0, idle: 0, ended: 0 })
+    expect(lista.secoes[0]?.contagem).toEqual({ waiting: 1, running: 0, shell: 0, idle: 0, ended: 0 })
   })
 
   it('a árvore dos agentes: o neto dentro do pai, e os concluídos antigos dobrados num "+N"', () => {

@@ -12,7 +12,7 @@ import {
   type SessaoNoDocumento,
 } from './lib/exportar.ts'
 import { Selo, cls } from './nodes.tsx'
-import { clock, modelLabel, plural, relTime, resumeCommand, waitingReason } from './text.ts'
+import { DEPOIS_DO_SHELL, ESPERANDO_SHELL, clock, modelLabel, plural, relTime, resumeCommand, waitingReason } from './text.ts'
 
 /**
  * O documento do "Salvar como" (PNG e PDF) e do "Imprimir": as sessões com tudo o que o painel mostra e a
@@ -105,6 +105,11 @@ function SessaoNoDocumentoView({ item, doc }: { item: SessaoNoDocumento; doc: Da
         {item.nome !== s.title && <p className="doc-nota">Título do Claude: {s.title}</p>}
         {s.status === 'waiting' && (
           <p className="detalhes-alerta">Esperando {waitingReason(s.waitingFor)}. Responda no terminal dessa sessão.</p>
+        )}
+        {s.status === 'shell' && (
+          <p className="detalhes-alerta is-shell">
+            {ESPERANDO_SHELL}. {DEPOIS_DO_SHELL}
+          </p>
         )}
       </div>
 

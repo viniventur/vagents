@@ -480,7 +480,7 @@ export function buildGraph(snapshot: Snapshot, opts: GraphOptions): Graph {
     const laneW = Math.max(rowLimit, ...faixas.map((f) => f.arranjo?.maxX ?? 0)) + 2 * SIZE.lanePad
     let y = 0
     faixas.forEach(({ grupo, id, doGrupo, arranjo }, i) => {
-      const contagem: StatusCounts = { waiting: 0, running: 0, idle: 0, ended: 0 }
+      const contagem: StatusCounts = { waiting: 0, running: 0, shell: 0, idle: 0, ended: 0 }
       for (const b of doGrupo) contagem[b.s.status]++
       const origem = { x: SIZE.lanePad, y: y + SIZE.laneHead }
       if (!grupo?.recolhido) origens.set(id, origem)
